@@ -24,6 +24,11 @@ project "Slicer"
 	cppdialect "C++20"
 	staticruntime "on"
 
+	prebuildcommands {
+
+		"cd vendor/assimp && cmake CMakeLists.txt -G \"Unix Makefiles\" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../../bin/{cfg.system}/{cfg.buildcfg} && cmake --build . && cd ../../"
+	}
+
 	includedirs {
 		"src",
 		"include",
@@ -48,7 +53,8 @@ project "Slicer"
 		"Nexus",
 		"glfw",
 		"Glad",
-		"ImGui"
+		"ImGui",
+		"assimp"
 	}
 	
 	filter "configurations:Debug"

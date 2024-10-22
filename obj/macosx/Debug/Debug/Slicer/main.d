@@ -1059,7 +1059,206 @@ obj/macosx/Debug/Debug/Slicer/main.o: src/main.cpp \
   vendor/Nexus/vendor/ImGui/imconfig.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/float.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/16/include/float.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/float.h
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/float.h \
+  include/camera.h /usr/local/include/glm/glm.hpp \
+  /usr/local/include/glm/detail/_fixes.hpp \
+  /usr/local/include/glm/detail/setup.hpp \
+  /usr/local/include/glm/detail/../simd/platform.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/cfloat \
+  /usr/local/include/glm/fwd.hpp \
+  /usr/local/include/glm/detail/qualifier.hpp \
+  /usr/local/include/glm/vec2.hpp \
+  /usr/local/include/glm/./ext/vector_bool2.hpp \
+  /usr/local/include/glm/./ext/../detail/type_vec2.hpp \
+  /usr/local/include/glm/./ext/../detail/qualifier.hpp \
+  /usr/local/include/glm/./ext/../detail/type_vec2.inl \
+  /usr/local/include/glm/./ext/../detail/./compute_vector_relational.hpp \
+  /usr/local/include/glm/./ext/../detail/./setup.hpp \
+  /usr/local/include/glm/./ext/vector_bool2_precision.hpp \
+  /usr/local/include/glm/./ext/vector_float2.hpp \
+  /usr/local/include/glm/./ext/vector_float2_precision.hpp \
+  /usr/local/include/glm/./ext/vector_double2.hpp \
+  /usr/local/include/glm/./ext/vector_double2_precision.hpp \
+  /usr/local/include/glm/./ext/vector_int2.hpp \
+  /usr/local/include/glm/./ext/vector_int2_sized.hpp \
+  /usr/local/include/glm/./ext/../ext/vector_int2.hpp \
+  /usr/local/include/glm/./ext/../ext/scalar_int_sized.hpp \
+  /usr/local/include/glm/./ext/../ext/../detail/setup.hpp \
+  /usr/local/include/glm/./ext/vector_uint2.hpp \
+  /usr/local/include/glm/./ext/vector_uint2_sized.hpp \
+  /usr/local/include/glm/./ext/../ext/vector_uint2.hpp \
+  /usr/local/include/glm/./ext/../ext/scalar_uint_sized.hpp \
+  /usr/local/include/glm/vec3.hpp \
+  /usr/local/include/glm/./ext/vector_bool3.hpp \
+  /usr/local/include/glm/./ext/../detail/type_vec3.hpp \
+  /usr/local/include/glm/./ext/../detail/type_vec3.inl \
+  /usr/local/include/glm/./ext/../detail/compute_vector_relational.hpp \
+  /usr/local/include/glm/./ext/vector_bool3_precision.hpp \
+  /usr/local/include/glm/./ext/vector_float3.hpp \
+  /usr/local/include/glm/./ext/vector_float3_precision.hpp \
+  /usr/local/include/glm/./ext/vector_double3.hpp \
+  /usr/local/include/glm/./ext/vector_double3_precision.hpp \
+  /usr/local/include/glm/./ext/vector_int3.hpp \
+  /usr/local/include/glm/./ext/vector_int3_sized.hpp \
+  /usr/local/include/glm/./ext/../ext/vector_int3.hpp \
+  /usr/local/include/glm/./ext/vector_uint3.hpp \
+  /usr/local/include/glm/./ext/vector_uint3_sized.hpp \
+  /usr/local/include/glm/./ext/../ext/vector_uint3.hpp \
+  /usr/local/include/glm/vec4.hpp \
+  /usr/local/include/glm/./ext/vector_bool4.hpp \
+  /usr/local/include/glm/./ext/../detail/type_vec4.hpp \
+  /usr/local/include/glm/./ext/../detail/type_vec4.inl \
+  /usr/local/include/glm/./ext/vector_bool4_precision.hpp \
+  /usr/local/include/glm/./ext/vector_float4.hpp \
+  /usr/local/include/glm/./ext/vector_float4_precision.hpp \
+  /usr/local/include/glm/./ext/vector_double4.hpp \
+  /usr/local/include/glm/./ext/vector_double4_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/setup.hpp \
+  /usr/local/include/glm/./ext/vector_int4.hpp \
+  /usr/local/include/glm/./ext/vector_int4_sized.hpp \
+  /usr/local/include/glm/./ext/../ext/vector_int4.hpp \
+  /usr/local/include/glm/./ext/vector_uint4.hpp \
+  /usr/local/include/glm/./ext/vector_uint4_sized.hpp \
+  /usr/local/include/glm/./ext/../ext/vector_uint4.hpp \
+  /usr/local/include/glm/mat2x2.hpp \
+  /usr/local/include/glm/./ext/matrix_double2x2.hpp \
+  /usr/local/include/glm/./ext/../detail/type_mat2x2.hpp \
+  /usr/local/include/glm/./ext/../detail/type_mat2x2.inl \
+  /usr/local/include/glm/./ext/../detail/../matrix.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/qualifier.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/setup.hpp \
+  /usr/local/include/glm/./ext/../detail/../vec2.hpp \
+  /usr/local/include/glm/./ext/../detail/../vec3.hpp \
+  /usr/local/include/glm/./ext/../detail/../vec4.hpp \
+  /usr/local/include/glm/./ext/../detail/../mat2x2.hpp \
+  /usr/local/include/glm/./ext/../detail/../mat2x3.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double2x3.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat2x3.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_vec2.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_vec3.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat2x3.inl \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double2x3_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float2x3.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float2x3_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/../mat2x4.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double2x4.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat2x4.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_vec4.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat2x4.inl \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double2x4_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float2x4.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float2x4_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/../mat3x2.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double3x2.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat3x2.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat3x2.inl \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double3x2_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float3x2.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float3x2_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/../mat3x3.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double3x3.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat3x3.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat3x3.inl \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/../matrix.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double3x3_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float3x3.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float3x3_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/../mat3x4.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double3x4.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat3x4.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat3x4.inl \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double3x4_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float3x4.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float3x4_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/../mat4x2.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double4x2.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat4x2.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat4x2.inl \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double4x2_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float4x2.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float4x2_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat2x2.hpp \
+  /usr/local/include/glm/./ext/../detail/../mat4x3.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double4x3.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat4x3.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat4x3.inl \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double4x3_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float4x3.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float4x3_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/../mat4x4.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double4x4.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat4x4.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat4x4.inl \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_double4x4_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float4x4.hpp \
+  /usr/local/include/glm/./ext/../detail/.././ext/matrix_float4x4_precision.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/func_matrix.inl \
+  /usr/local/include/glm/./ext/../detail/../detail/../geometric.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/type_vec3.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/func_geometric.inl \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../exponential.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/type_vec1.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/qualifier.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/type_vec1.inl \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/./compute_vector_relational.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/type_vec2.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/type_vec3.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/type_vec4.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/func_exponential.inl \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/../vector_relational.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/../detail/qualifier.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/../detail/setup.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/../detail/func_vector_relational.inl \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/_vectorize.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../common.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/_fixes.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/func_common.inl \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/compute_common.hpp \
+  /usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/setup.hpp \
+  /usr/local/include/glm/./ext/matrix_double2x2_precision.hpp \
+  /usr/local/include/glm/./ext/matrix_float2x2.hpp \
+  /usr/local/include/glm/./ext/matrix_float2x2_precision.hpp \
+  /usr/local/include/glm/mat2x3.hpp /usr/local/include/glm/mat2x4.hpp \
+  /usr/local/include/glm/mat3x2.hpp /usr/local/include/glm/mat3x3.hpp \
+  /usr/local/include/glm/mat3x4.hpp /usr/local/include/glm/mat4x2.hpp \
+  /usr/local/include/glm/mat4x3.hpp /usr/local/include/glm/mat4x4.hpp \
+  /usr/local/include/glm/trigonometric.hpp \
+  /usr/local/include/glm/detail/func_trigonometric.inl \
+  /usr/local/include/glm/detail/_vectorize.hpp \
+  /usr/local/include/glm/exponential.hpp \
+  /usr/local/include/glm/common.hpp /usr/local/include/glm/packing.hpp \
+  /usr/local/include/glm/detail/func_packing.inl \
+  /usr/local/include/glm/detail/../common.hpp \
+  /usr/local/include/glm/detail/type_half.hpp \
+  /usr/local/include/glm/detail/type_half.inl \
+  /usr/local/include/glm/geometric.hpp /usr/local/include/glm/matrix.hpp \
+  /usr/local/include/glm/vector_relational.hpp \
+  /usr/local/include/glm/integer.hpp \
+  /usr/local/include/glm/detail/func_integer.inl include/object.h \
+  include/model.h /usr/local/include/assimp/scene.h \
+  /usr/local/include/assimp/types.h /usr/local/include/assimp/defs.h \
+  /usr/local/include/assimp/config.h /usr/local/include/assimp/vector2.h \
+  /usr/local/include/assimp/vector3.h /usr/local/include/assimp/color4.h \
+  /usr/local/include/assimp/matrix3x3.h \
+  /usr/local/include/assimp/matrix4x4.h \
+  /usr/local/include/assimp/quaternion.h \
+  /usr/local/include/assimp/vector2.inl \
+  /usr/local/include/assimp/vector3.inl \
+  /usr/local/include/assimp/color4.inl \
+  /usr/local/include/assimp/matrix3x3.inl \
+  /usr/local/include/assimp/matrix4x4.inl \
+  /usr/local/include/assimp/MathFunctions.h \
+  /usr/local/include/assimp/quaternion.inl \
+  /usr/local/include/assimp/texture.h \
+  /usr/local/include/assimp/./Compiler/pushpack1.h \
+  /usr/local/include/assimp/./Compiler/poppack1.h \
+  /usr/local/include/assimp/mesh.h /usr/local/include/assimp/aabb.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/unordered_set \
+  /usr/local/include/assimp/light.h /usr/local/include/assimp/camera.h \
+  /usr/local/include/assimp/material.h \
+  /usr/local/include/assimp/material.inl \
+  /usr/local/include/assimp/anim.h /usr/local/include/assimp/metadata.h \
+  include/mesh.h include/shader.h include/resourceManager.h
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/iostream:
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__assert:
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__assertion_handler:
@@ -2123,3 +2322,219 @@ vendor/Nexus/vendor/ImGui/imconfig.h:
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/float.h:
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/16/include/float.h:
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/float.h:
+include/camera.h:
+/usr/local/include/glm/glm.hpp:
+/usr/local/include/glm/detail/_fixes.hpp:
+/usr/local/include/glm/detail/setup.hpp:
+/usr/local/include/glm/detail/../simd/platform.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/cfloat:
+/usr/local/include/glm/fwd.hpp:
+/usr/local/include/glm/detail/qualifier.hpp:
+/usr/local/include/glm/vec2.hpp:
+/usr/local/include/glm/./ext/vector_bool2.hpp:
+/usr/local/include/glm/./ext/../detail/type_vec2.hpp:
+/usr/local/include/glm/./ext/../detail/qualifier.hpp:
+/usr/local/include/glm/./ext/../detail/type_vec2.inl:
+/usr/local/include/glm/./ext/../detail/./compute_vector_relational.hpp:
+/usr/local/include/glm/./ext/../detail/./setup.hpp:
+/usr/local/include/glm/./ext/vector_bool2_precision.hpp:
+/usr/local/include/glm/./ext/vector_float2.hpp:
+/usr/local/include/glm/./ext/vector_float2_precision.hpp:
+/usr/local/include/glm/./ext/vector_double2.hpp:
+/usr/local/include/glm/./ext/vector_double2_precision.hpp:
+/usr/local/include/glm/./ext/vector_int2.hpp:
+/usr/local/include/glm/./ext/vector_int2_sized.hpp:
+/usr/local/include/glm/./ext/../ext/vector_int2.hpp:
+/usr/local/include/glm/./ext/../ext/scalar_int_sized.hpp:
+/usr/local/include/glm/./ext/../ext/../detail/setup.hpp:
+/usr/local/include/glm/./ext/vector_uint2.hpp:
+/usr/local/include/glm/./ext/vector_uint2_sized.hpp:
+/usr/local/include/glm/./ext/../ext/vector_uint2.hpp:
+/usr/local/include/glm/./ext/../ext/scalar_uint_sized.hpp:
+/usr/local/include/glm/vec3.hpp:
+/usr/local/include/glm/./ext/vector_bool3.hpp:
+/usr/local/include/glm/./ext/../detail/type_vec3.hpp:
+/usr/local/include/glm/./ext/../detail/type_vec3.inl:
+/usr/local/include/glm/./ext/../detail/compute_vector_relational.hpp:
+/usr/local/include/glm/./ext/vector_bool3_precision.hpp:
+/usr/local/include/glm/./ext/vector_float3.hpp:
+/usr/local/include/glm/./ext/vector_float3_precision.hpp:
+/usr/local/include/glm/./ext/vector_double3.hpp:
+/usr/local/include/glm/./ext/vector_double3_precision.hpp:
+/usr/local/include/glm/./ext/vector_int3.hpp:
+/usr/local/include/glm/./ext/vector_int3_sized.hpp:
+/usr/local/include/glm/./ext/../ext/vector_int3.hpp:
+/usr/local/include/glm/./ext/vector_uint3.hpp:
+/usr/local/include/glm/./ext/vector_uint3_sized.hpp:
+/usr/local/include/glm/./ext/../ext/vector_uint3.hpp:
+/usr/local/include/glm/vec4.hpp:
+/usr/local/include/glm/./ext/vector_bool4.hpp:
+/usr/local/include/glm/./ext/../detail/type_vec4.hpp:
+/usr/local/include/glm/./ext/../detail/type_vec4.inl:
+/usr/local/include/glm/./ext/vector_bool4_precision.hpp:
+/usr/local/include/glm/./ext/vector_float4.hpp:
+/usr/local/include/glm/./ext/vector_float4_precision.hpp:
+/usr/local/include/glm/./ext/vector_double4.hpp:
+/usr/local/include/glm/./ext/vector_double4_precision.hpp:
+/usr/local/include/glm/./ext/../detail/setup.hpp:
+/usr/local/include/glm/./ext/vector_int4.hpp:
+/usr/local/include/glm/./ext/vector_int4_sized.hpp:
+/usr/local/include/glm/./ext/../ext/vector_int4.hpp:
+/usr/local/include/glm/./ext/vector_uint4.hpp:
+/usr/local/include/glm/./ext/vector_uint4_sized.hpp:
+/usr/local/include/glm/./ext/../ext/vector_uint4.hpp:
+/usr/local/include/glm/mat2x2.hpp:
+/usr/local/include/glm/./ext/matrix_double2x2.hpp:
+/usr/local/include/glm/./ext/../detail/type_mat2x2.hpp:
+/usr/local/include/glm/./ext/../detail/type_mat2x2.inl:
+/usr/local/include/glm/./ext/../detail/../matrix.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/qualifier.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/setup.hpp:
+/usr/local/include/glm/./ext/../detail/../vec2.hpp:
+/usr/local/include/glm/./ext/../detail/../vec3.hpp:
+/usr/local/include/glm/./ext/../detail/../vec4.hpp:
+/usr/local/include/glm/./ext/../detail/../mat2x2.hpp:
+/usr/local/include/glm/./ext/../detail/../mat2x3.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double2x3.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat2x3.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_vec2.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_vec3.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat2x3.inl:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double2x3_precision.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float2x3.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float2x3_precision.hpp:
+/usr/local/include/glm/./ext/../detail/../mat2x4.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double2x4.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat2x4.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_vec4.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat2x4.inl:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double2x4_precision.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float2x4.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float2x4_precision.hpp:
+/usr/local/include/glm/./ext/../detail/../mat3x2.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double3x2.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat3x2.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat3x2.inl:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double3x2_precision.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float3x2.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float3x2_precision.hpp:
+/usr/local/include/glm/./ext/../detail/../mat3x3.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double3x3.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat3x3.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat3x3.inl:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/../matrix.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double3x3_precision.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float3x3.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float3x3_precision.hpp:
+/usr/local/include/glm/./ext/../detail/../mat3x4.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double3x4.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat3x4.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat3x4.inl:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double3x4_precision.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float3x4.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float3x4_precision.hpp:
+/usr/local/include/glm/./ext/../detail/../mat4x2.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double4x2.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat4x2.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat4x2.inl:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double4x2_precision.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float4x2.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float4x2_precision.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat2x2.hpp:
+/usr/local/include/glm/./ext/../detail/../mat4x3.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double4x3.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat4x3.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat4x3.inl:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double4x3_precision.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float4x3.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float4x3_precision.hpp:
+/usr/local/include/glm/./ext/../detail/../mat4x4.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double4x4.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat4x4.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/../detail/type_mat4x4.inl:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_double4x4_precision.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float4x4.hpp:
+/usr/local/include/glm/./ext/../detail/.././ext/matrix_float4x4_precision.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/func_matrix.inl:
+/usr/local/include/glm/./ext/../detail/../detail/../geometric.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/type_vec3.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/func_geometric.inl:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../exponential.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/type_vec1.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/qualifier.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/type_vec1.inl:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/./compute_vector_relational.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/type_vec2.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/type_vec3.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/type_vec4.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/func_exponential.inl:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/../vector_relational.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/../detail/qualifier.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/../detail/setup.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/../detail/func_vector_relational.inl:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/_vectorize.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../common.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/_fixes.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/func_common.inl:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/compute_common.hpp:
+/usr/local/include/glm/./ext/../detail/../detail/../detail/../detail/setup.hpp:
+/usr/local/include/glm/./ext/matrix_double2x2_precision.hpp:
+/usr/local/include/glm/./ext/matrix_float2x2.hpp:
+/usr/local/include/glm/./ext/matrix_float2x2_precision.hpp:
+/usr/local/include/glm/mat2x3.hpp:
+/usr/local/include/glm/mat2x4.hpp:
+/usr/local/include/glm/mat3x2.hpp:
+/usr/local/include/glm/mat3x3.hpp:
+/usr/local/include/glm/mat3x4.hpp:
+/usr/local/include/glm/mat4x2.hpp:
+/usr/local/include/glm/mat4x3.hpp:
+/usr/local/include/glm/mat4x4.hpp:
+/usr/local/include/glm/trigonometric.hpp:
+/usr/local/include/glm/detail/func_trigonometric.inl:
+/usr/local/include/glm/detail/_vectorize.hpp:
+/usr/local/include/glm/exponential.hpp:
+/usr/local/include/glm/common.hpp:
+/usr/local/include/glm/packing.hpp:
+/usr/local/include/glm/detail/func_packing.inl:
+/usr/local/include/glm/detail/../common.hpp:
+/usr/local/include/glm/detail/type_half.hpp:
+/usr/local/include/glm/detail/type_half.inl:
+/usr/local/include/glm/geometric.hpp:
+/usr/local/include/glm/matrix.hpp:
+/usr/local/include/glm/vector_relational.hpp:
+/usr/local/include/glm/integer.hpp:
+/usr/local/include/glm/detail/func_integer.inl:
+include/object.h:
+include/model.h:
+/usr/local/include/assimp/scene.h:
+/usr/local/include/assimp/types.h:
+/usr/local/include/assimp/defs.h:
+/usr/local/include/assimp/config.h:
+/usr/local/include/assimp/vector2.h:
+/usr/local/include/assimp/vector3.h:
+/usr/local/include/assimp/color4.h:
+/usr/local/include/assimp/matrix3x3.h:
+/usr/local/include/assimp/matrix4x4.h:
+/usr/local/include/assimp/quaternion.h:
+/usr/local/include/assimp/vector2.inl:
+/usr/local/include/assimp/vector3.inl:
+/usr/local/include/assimp/color4.inl:
+/usr/local/include/assimp/matrix3x3.inl:
+/usr/local/include/assimp/matrix4x4.inl:
+/usr/local/include/assimp/MathFunctions.h:
+/usr/local/include/assimp/quaternion.inl:
+/usr/local/include/assimp/texture.h:
+/usr/local/include/assimp/./Compiler/pushpack1.h:
+/usr/local/include/assimp/./Compiler/poppack1.h:
+/usr/local/include/assimp/mesh.h:
+/usr/local/include/assimp/aabb.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/unordered_set:
+/usr/local/include/assimp/light.h:
+/usr/local/include/assimp/camera.h:
+/usr/local/include/assimp/material.h:
+/usr/local/include/assimp/material.inl:
+/usr/local/include/assimp/anim.h:
+/usr/local/include/assimp/metadata.h:
+include/mesh.h:
+include/shader.h:
+include/resourceManager.h:

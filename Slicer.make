@@ -34,6 +34,8 @@ ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
 ALL_LDFLAGS += $(LDFLAGS) -m64
 LINKCMD = $(CXX) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
 define PREBUILDCMDS
+	@echo Running prebuild commands
+	cd vendor/assimp && cmake CMakeLists.txt -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../../bin/{cfg.system}/{cfg.buildcfg} && cmake --build . && cd ../../
 endef
 define PRELINKCMDS
 endef
@@ -47,7 +49,7 @@ OBJDIR = obj/macosx/Debug/Debug/Slicer
 DEFINES += -DDEBUG
 ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -g
 ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -g -std=c++20
-LIBS += bin/macosx/Debug/libNexus.a bin/macosx/Debug/libglfw.a bin/macosx/Debug/libGlad.a bin/macosx/Debug/libImGui.a -framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo -framework QuartzCore
+LIBS += bin/macosx/Debug/libNexus.a bin/macosx/Debug/libglfw.a bin/macosx/Debug/libGlad.a bin/macosx/Debug/libImGui.a -framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo -framework QuartzCore -lassimp
 LDDEPS += bin/macosx/Debug/libNexus.a bin/macosx/Debug/libglfw.a bin/macosx/Debug/libGlad.a bin/macosx/Debug/libImGui.a
 
 else ifeq ($(config),release)
@@ -57,7 +59,7 @@ OBJDIR = obj/macosx/Release/Release/Slicer
 DEFINES += -DNDEBUG
 ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -O2
 ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -O2 -std=c++20
-LIBS += bin/macosx/Release/libNexus.a bin/macosx/Release/libglfw.a bin/macosx/Release/libGlad.a bin/macosx/Release/libImGui.a -framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo -framework QuartzCore
+LIBS += bin/macosx/Release/libNexus.a bin/macosx/Release/libglfw.a bin/macosx/Release/libGlad.a bin/macosx/Release/libImGui.a -framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo -framework QuartzCore -lassimp
 LDDEPS += bin/macosx/Release/libNexus.a bin/macosx/Release/libglfw.a bin/macosx/Release/libGlad.a bin/macosx/Release/libImGui.a
 
 endif
@@ -72,8 +74,24 @@ endif
 GENERATED :=
 OBJECTS :=
 
+GENERATED += $(OBJDIR)/camera.o
 GENERATED += $(OBJDIR)/main.o
+GENERATED += $(OBJDIR)/main2.o
+GENERATED += $(OBJDIR)/mesh.o
+GENERATED += $(OBJDIR)/model.o
+GENERATED += $(OBJDIR)/object.o
+GENERATED += $(OBJDIR)/playercamera.o
+GENERATED += $(OBJDIR)/resourceManager.o
+GENERATED += $(OBJDIR)/shader.o
+OBJECTS += $(OBJDIR)/camera.o
 OBJECTS += $(OBJDIR)/main.o
+OBJECTS += $(OBJDIR)/main2.o
+OBJECTS += $(OBJDIR)/mesh.o
+OBJECTS += $(OBJDIR)/model.o
+OBJECTS += $(OBJDIR)/object.o
+OBJECTS += $(OBJDIR)/playercamera.o
+OBJECTS += $(OBJDIR)/resourceManager.o
+OBJECTS += $(OBJDIR)/shader.o
 
 # Rules
 # #############################################
@@ -137,7 +155,31 @@ endif
 # File Rules
 # #############################################
 
+$(OBJDIR)/camera.o: src/camera.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/main.o: src/main.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/main2.o: src/main2.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/mesh.o: src/mesh.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/model.o: src/model.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/object.o: src/object.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/playercamera.o: src/playercamera.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/resourceManager.o: src/resourceManager.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/shader.o: src/shader.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 

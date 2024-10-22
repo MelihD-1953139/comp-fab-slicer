@@ -1,3 +1,6 @@
 [submodule "vendor/Nexus"]
 	path = vendor/Nexus
 	url = git@github.com:KobeW-1952857/Nexus.git
+[submodule "vendor/assimp"]
+	path = vendor/assimp
+	url = git@github.com:assimp/assimp.git
