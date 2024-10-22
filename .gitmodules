@@ -1,0 +1,3 @@
+[submodule "vendor/Nexus"]
+	path = vendor/Nexus
+	url = git@github.com:KobeW-1952857/Nexus.git
