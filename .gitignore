@@ -1,6 +1,6 @@
 # File created using '.gitignore Generator' for Visual Studio Code: https://bit.ly/vscode-gig
-# Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,macos,c++,premake-gmake
-# Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,macos,c++,premake-gmake
+# Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,macos,c++,cmake
+# Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,macos,c++,cmake
 
 ### C++ ###
 # Prerequisites
@@ -36,6 +36,23 @@
 *.out
 *.app
 
+### CMake ###
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+
+### CMake Patch ###
+# External projects
+*-prefix/
+
 ### macOS ###
 # General
 .DS_Store
@@ -69,11 +86,6 @@ Temporary Items
 # iCloud generated files
 *.icloud
 
-### premake-gmake ###
-Makefile
-*.make
-obj/
-
 ### VisualStudioCode ###
 .vscode/*
 !.vscode/settings.json
@@ -93,8 +105,8 @@ obj/
 .history
 .ionide
 
-# End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,macos,c++,premake-gmake
+# End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,macos,c++,cmake
 
 # Custom rules (everything added below won't be overriden by 'Generate .gitignore File' if you use 'Update' option)
 
-obj/
+build/
