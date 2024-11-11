@@ -18,24 +18,19 @@ const glm::vec3 WORLD_UP = {0.0f, 1.0f, 0.0f};
 
 class Camera {
    public:
-	Camera();
-	Camera(glm::vec3 position);
+	Camera(float distanceFromTarget = 5.0f);
 
-	void setStartPos(glm::vec3 position);
-
-	const glm::mat4 getViewMatrix() const;
+	const glm::mat4 getViewMatrix(const glm::vec3 &target) const;
 	const glm::mat4 getProjectionMatrix(int width, int height) const;
 	void move(CameraMove direction, float deltaTime);
 	void processLookingDirection(float xoff, float yoff);
-	void ToggleFov();
+	void setFov(float fov);
 	glm::vec3 getPosition() const;
-
-   public:
-	const float &fov;
+	void setDistanceFromTarget(float distance) { m_distanceFromTarget = distance; }
+	void offsetDistanceFromTarget(float offset) { m_distanceFromTarget += offset; }
+	const float getDistanceFromTarget() const { return m_distanceFromTarget; }
 
    private:
-	glm::vec3 m_startPosition;
-	glm::vec3 m_position;
 	glm::vec3 m_front;
 	glm::vec3 m_up;
 	glm::vec3 m_right;
@@ -46,6 +41,8 @@ class Camera {
 	float m_movementSpeed;
 	float m_mouseSensitivity;
 	float m_fov;
+
+	float m_distanceFromTarget;
 
    private:
 	void updateCameraVectors();

@@ -31,11 +31,9 @@ INCLUDES += -Isrc -Iinclude -Ivendor -Ivendor/Nexus/include -Ivendor/Nexus/vendo
 FORCE_INCLUDE +=
 ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
 ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-ALL_LDFLAGS += $(LDFLAGS) -m64
+ALL_LDFLAGS += $(LDFLAGS) -L/usr/local/lib -m64
 LINKCMD = $(CXX) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
 define PREBUILDCMDS
-	@echo Running prebuild commands
-	cd vendor/assimp && cmake CMakeLists.txt -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../../bin/{cfg.system}/{cfg.buildcfg} && cmake --build . && cd ../../
 endef
 define PRELINKCMDS
 endef
@@ -76,20 +74,16 @@ OBJECTS :=
 
 GENERATED += $(OBJDIR)/camera.o
 GENERATED += $(OBJDIR)/main.o
-GENERATED += $(OBJDIR)/main2.o
 GENERATED += $(OBJDIR)/mesh.o
 GENERATED += $(OBJDIR)/model.o
 GENERATED += $(OBJDIR)/object.o
-GENERATED += $(OBJDIR)/playercamera.o
 GENERATED += $(OBJDIR)/resourceManager.o
 GENERATED += $(OBJDIR)/shader.o
 OBJECTS += $(OBJDIR)/camera.o
 OBJECTS += $(OBJDIR)/main.o
-OBJECTS += $(OBJDIR)/main2.o
 OBJECTS += $(OBJDIR)/mesh.o
 OBJECTS += $(OBJDIR)/model.o
 OBJECTS += $(OBJDIR)/object.o
-OBJECTS += $(OBJDIR)/playercamera.o
 OBJECTS += $(OBJDIR)/resourceManager.o
 OBJECTS += $(OBJDIR)/shader.o
 
@@ -161,9 +155,6 @@ $(OBJDIR)/camera.o: src/camera.cpp
 $(OBJDIR)/main.o: src/main.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/main2.o: src/main2.cpp
-	@echo "$(notdir $<)"
-	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/mesh.o: src/mesh.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
@@ -171,9 +162,6 @@ $(OBJDIR)/model.o: src/model.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/object.o: src/object.cpp
-	@echo "$(notdir $<)"
-	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/playercamera.o: src/playercamera.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/resourceManager.o: src/resourceManager.cpp
