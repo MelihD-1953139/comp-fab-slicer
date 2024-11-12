@@ -1,6 +1,8 @@
+#define GLM_ENABLE_EXPERIMENTAL
+#include <clipper2/clipper.h>
+
 #include <cmath>
 #include <glm/glm.hpp>
-#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>
 #include <memory>

@@ -15,3 +15,6 @@ target_link_libraries(Slicer PRIVATE assimp)
 add_subdirectory(vendor/Nexus)
 target_link_libraries(Slicer PRIVATE Nexus)
 
+add_subdirectory(vendor/Clipper2/CPP)
+target_link_libraries(Slicer PRIVATE Clipper2)
+
