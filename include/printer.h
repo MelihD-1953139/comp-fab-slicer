@@ -18,7 +18,6 @@ class Printer : public Object {
 
 	void setSize(glm::ivec3 size) {
 		this->size = size;
-		reset();
 		scale(glm::vec3(size));
 	}
 

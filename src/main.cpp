@@ -73,7 +73,10 @@ int main(int argc, char* argv[]) {
 	ResourceManager::loadModel("model", argv[1]);
 	ResourceManager::loadModel("sphere", "res/models/sphere.obj");
 
-	Object model(ResourceManager::getModel("model"), shader, glm::vec3(0.0f, 0.0f, 0.0f), 1.0f);
+	Object plane(ResourceManager::loadModel("plane", "res/models/plane.obj"), shader,
+				 glm::vec3(0.0f, 0.0f, 0.0f));
+
+	Object model(ResourceManager::getModel("model"), shader, glm::vec3(0.0f, 0.0f, 0.0f));
 	Printer printer("res/models/plane.obj");
 	model.setPositionCentered(printer.getCenter() * glm::vec3(1.0f, 0.0f, 1.0f));
 
@@ -101,6 +104,7 @@ int main(int argc, char* argv[]) {
 		});
 
 	glClearColor(0.98, 0.98, 0.98, 1.0);
+	glEnable(GL_DEPTH_TEST);
 
 	ControlSettings settings;
 
@@ -114,7 +118,7 @@ int main(int argc, char* argv[]) {
 
 	// Run the main loop
 	window->whileOpen([&]() {
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		ImGui::ShowDemoWindow();
 		showControlPanel(settings, printer, model);
@@ -122,7 +126,13 @@ int main(int argc, char* argv[]) {
 		auto view = camera.getViewMatrix(printer.getCenter() * glm::vec3(1.0f, 0.0f, 1.0f));
 		auto projection = camera.getProjectionMatrix(windowSize.first, windowSize.second);
 
+		plane.setPositionCentered(
+			printer.getCenter() * glm::vec3(1.0f, 0.0f, 1.0f) +
+			glm::vec3(0.0f, settings.sliceIndex * settings.printNozzle, 0.0f));
+		plane.scale(printer.getSize());
+
 		printer.render(view, projection, dirLight, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+		plane.render(view, projection, dirLight, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
 		model.render(view, projection, dirLight, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
 	});
 }

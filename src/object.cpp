@@ -6,27 +6,24 @@
 #include "resourceManager.h"
 
 // ========================= Object =========================
-Object::Object(Model &model, Shader &shader, glm::vec3 pos, float scale)
-	: m_model(model), m_shader(shader) {
-	m_pos = pos;
-	m_scale = scale;
-	m_modelMatrix = glm::mat4(1.0f);
-	m_modelMatrix = glm::translate(m_modelMatrix, pos);
-}
+Object::Object(Model &model, Shader &shader, glm::vec3 pos)
+	: m_model(model), m_shader(shader), m_scale(1.0f), m_pos(pos) {}
 
 void Object::render(glm::mat4 view, glm::mat4 projection, DirectionalLight dirLight,
 					glm::vec4 color) {
+	auto modelMatrix =
+		glm::translate(glm::mat4(1.0f), m_pos) * glm::scale(glm::mat4(1.0f), m_scale);
 	m_shader.use();
 	m_shader.setViewProjection(view, projection);
-	m_shader.setMat4("model", m_modelMatrix);
-	setLighting(dirLight);
+	m_shader.setMat4("model", modelMatrix);
+	m_shader.setDirectionalLight(dirLight);
 
 	m_model.draw(m_shader, color);
 }
 
-void Object::scale(glm::vec3 scale) { m_modelMatrix = glm::scale(m_modelMatrix, scale); }
+void Object::scale(glm::vec3 scale) { m_scale = scale; }
 
-void Object::scale(float scale) { m_modelMatrix = glm::scale(m_modelMatrix, glm::vec3(scale)); }
+void Object::scale(float scale) { m_scale = glm::vec3(scale); }
 
 std::pair<glm::vec3, glm::vec3> Object::getBoundingBox() const {
 	glm::vec4 scaledMin = glm::vec4(m_model.getMin(), 1.0f);
@@ -40,31 +37,17 @@ glm::vec3 Object::getCenter() const {
 	return center;
 }
 
-void Object::addTransformation(glm::mat4 transformation) {
-	m_modelMatrix = m_modelMatrix * transformation;
-}
-
-void Object::setLighting(DirectionalLight &dirLight) {
-	m_shader.use();
-	m_shader.setDirectionalLight(dirLight);
-}
-
 float Object::getHeightOfObject() const {
 	auto boundingBox = getBoundingBox();
 	float height = boundingBox.second.y - boundingBox.first.y;
 	return height;
 }
 
-void Object::setPosition(glm::vec3 pos) {
-	m_pos = pos;
-	m_modelMatrix = glm::translate(glm::mat4(1.0f), pos);
-}
+void Object::setPosition(glm::vec3 pos) { m_pos = pos; }
 
 void Object::setPositionCentered(glm::vec3 pos) {
-	glm::vec3 center = getCenter();
+	glm::vec3 center = getCenter() * m_scale;
 	center.y = 0.0f;
 	pos -= center;
 	setPosition(pos);
 }
-
-void Object::reset() { m_modelMatrix = glm::translate(glm::mat4(1.0f), m_pos); }
