@@ -15,8 +15,12 @@ class Object {
 	void scale(float scale);
 	std::pair<glm::vec3, glm::vec3> getBoundingBox() const;
 
-	glm::vec3 getCenter() const;
+	virtual glm::vec3 getCenter() const;
 	float getHeightOfObject() const;
+
+	void setPosition(glm::vec3 pos);
+	void setPositionCentered(glm::vec3 pos);
+	void reset();
 
    protected:
 	void addTransformation(glm::mat4 transformation);
@@ -26,6 +30,7 @@ class Object {
 	glm::vec3 m_pos;
 	float m_scale;
 	glm::mat4 m_modelMatrix;
+	glm::mat4 m_modelMatrixOriginal;
 	Model &m_model;
 	Shader &m_shader;
 };

@@ -29,8 +29,8 @@ void Object::scale(glm::vec3 scale) { m_modelMatrix = glm::scale(m_modelMatrix, 
 void Object::scale(float scale) { m_modelMatrix = glm::scale(m_modelMatrix, glm::vec3(scale)); }
 
 std::pair<glm::vec3, glm::vec3> Object::getBoundingBox() const {
-	glm::vec4 scaledMin = m_modelMatrix * glm::vec4(m_model.getMin(), 1.0f);
-	glm::vec4 scaledMax = m_modelMatrix * glm::vec4(m_model.getMax(), 1.0f);
+	glm::vec4 scaledMin = glm::vec4(m_model.getMin(), 1.0f);
+	glm::vec4 scaledMax = glm::vec4(m_model.getMax(), 1.0f);
 	return {scaledMin / scaledMin.w, scaledMax / scaledMax.w};
 }
 
@@ -54,3 +54,17 @@ float Object::getHeightOfObject() const {
 	float height = boundingBox.second.y - boundingBox.first.y;
 	return height;
 }
+
+void Object::setPosition(glm::vec3 pos) {
+	m_pos = pos;
+	m_modelMatrix = glm::translate(glm::mat4(1.0f), pos);
+}
+
+void Object::setPositionCentered(glm::vec3 pos) {
+	glm::vec3 center = getCenter();
+	center.y = 0.0f;
+	pos -= center;
+	setPosition(pos);
+}
+
+void Object::reset() { m_modelMatrix = glm::translate(glm::mat4(1.0f), m_pos); }
