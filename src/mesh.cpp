@@ -1,12 +1,19 @@
 #include "mesh.h"
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <iostream>
 
+#include "contour.h"
 #include "resourceManager.h"
+
 //==================== Public ====================
 Mesh::Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices)
 	: m_vertices(vertices), m_indices(indices) {
 	initialize();
+	for (size_t i = 0; i < m_indices.size(); i += 3) {
+		m_triangles.emplace_back(m_vertices[m_indices[i]], m_vertices[m_indices[i + 1]],
+								 m_vertices[m_indices[i + 2]]);
+	}
 }
 
 void Mesh::draw(Shader &shader, glm::vec4 color) {
@@ -17,7 +24,6 @@ void Mesh::draw(Shader &shader, glm::vec4 color) {
 	glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT, 0);
 
 	glBindVertexArray(0);
-	glActiveTexture(GL_TEXTURE0);
 }
 
 glm::vec3 Mesh::getMin() const {
@@ -42,7 +48,6 @@ glm::vec3 Mesh::getMax() const {
 
 //==================== Private ====================
 void Mesh::initialize() {
-	// GLuint VAO;
 	glGenVertexArrays(1, &m_VAO);
 	glGenBuffers(1, &m_VBO);
 	glGenBuffers(1, &m_EBO);
@@ -68,4 +73,31 @@ void Mesh::initialize() {
 	glEnableVertexAttribArray(1);
 
 	glBindVertexArray(0);
+}
+
+Contour Mesh::getSlice(double sliceHeight) {
+	std::vector<Line> lineSegments;
+	for (auto &triangle : m_triangles) {
+		if (triangle.getYmin() >= sliceHeight || triangle.getYmax() <= sliceHeight) continue;
+
+		Line segment;
+
+		for (int i = 0; i < 3; ++i) {
+			auto &v1 = triangle.vertices[i];
+			auto &v2 = triangle.vertices[(i + 1) % 3];
+			if ((v1.y - sliceHeight) * (v2.y - sliceHeight) > 0) continue;
+
+			float t = (sliceHeight - v1.y) / (v2.y - v1.y);
+			segment.setNextPoint(v1 + t * (v2 - v1));
+		}
+		lineSegments.push_back(segment);
+	}
+
+	for (auto &line : lineSegments) {
+		std::cout << line.p1.x << " " << line.p1.z << " -> " << line.p2.x << " " << line.p2.z
+				  << std::endl;
+	}
+
+	if (!lineSegments.empty()) return {lineSegments};
+	return {};
 }

@@ -8,11 +8,10 @@
 
 class ResourceManager {
    public:
-	static Shader &loadShader(std::string name, const char *vertexPath, const char *fragmentPath,
-							  const char *geomPath = nullptr);
+	static Shader &loadShader(std::string name, std::string vertexPath, std::string fragmentPath);
 	static Shader &getShader(std::string name);
 
-	static Model &loadModel(std::string name, const char *filepath, bool isInstanced = false);
+	static Model &loadModel(std::string name, std::string filepath, bool isInstanced = false);
 	static Model &getModel(std::string name);
 
 	static void clear();
@@ -23,8 +22,7 @@ class ResourceManager {
    private:
 	ResourceManager() {};
 
-	static Shader loadShadersFromFile(const char *vertexPath, const char *fragmentPath,
-									  const char *geomPath);
+	static Shader loadShadersFromFile(const char *vertexPath, const char *fragmentPath);
 
 	static std::string readFile(const char *filePath);
 

@@ -20,10 +20,10 @@
 std::map<std::string, Shader> ResourceManager::Shaders;
 std::map<std::string, Model> ResourceManager::Models;
 
-Shader &ResourceManager::loadShader(std::string name, const char *vertexPath,
-									const char *fragmentPath, const char *geomPath) {
+Shader &ResourceManager::loadShader(std::string name, std::string vertexPath,
+									std::string fragmentPath) {
 	DEBUG_LOAD_PRINT("Loading shader %s\n", name.c_str());
-	Shaders[name] = loadShadersFromFile(vertexPath, fragmentPath, geomPath);
+	Shaders[name] = loadShadersFromFile(vertexPath.c_str(), fragmentPath.c_str());
 	printf("Loaded shader %s, with id %d\n", name.c_str(), Shaders[name].m_id);
 	return Shaders[name];
 }
@@ -33,9 +33,9 @@ Shader &ResourceManager::getShader(std::string name) {
 	return Shaders[name];
 }
 
-Model &ResourceManager::loadModel(std::string name, const char *filepath, bool isInstanced) {
+Model &ResourceManager::loadModel(std::string name, std::string filepath, bool isInstanced) {
 	DEBUG_LOAD_PRINT("Loading model %s\n", name.c_str());
-	Models[name] = std::move(Model(filepath));
+	Models[name] = std::move(Model(filepath.c_str()));
 	return Models[name];
 }
 Model &ResourceManager::getModel(std::string name) {
@@ -48,14 +48,10 @@ void ResourceManager::clear() {
 	Models.clear();
 }
 
-Shader ResourceManager::loadShadersFromFile(const char *vertexPath, const char *fragmentPath,
-											const char *geomPath = nullptr) {
+Shader ResourceManager::loadShadersFromFile(const char *vertexPath, const char *fragmentPath) {
 	Shader toReturn;
 	toReturn.addVertexShader(readFile(vertexPath).c_str());
 	toReturn.addFragmentShader(readFile(fragmentPath).c_str());
-	if (geomPath != nullptr) {
-		// add geometry shader, probably not usefull
-	}
 	toReturn.linkProgram();
 
 	return toReturn;

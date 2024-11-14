@@ -9,15 +9,13 @@
 Object::Object(Model &model, Shader &shader, glm::vec3 pos)
 	: m_model(model), m_shader(shader), m_scale(1.0f), m_pos(pos) {}
 
-void Object::render(glm::mat4 view, glm::mat4 projection, DirectionalLight dirLight,
-					glm::vec4 color) {
-	auto modelMatrix =
-		glm::translate(glm::mat4(1.0f), m_pos) * glm::scale(glm::mat4(1.0f), m_scale);
+void Object::render(glm::mat4 view, glm::mat4 projection, glm::vec4 color) {
+	auto modelMatrix = glm::translate(glm::mat4(1.0f), m_pos);
+	modelMatrix = glm::scale(modelMatrix, m_scale);
+
 	m_shader.use();
 	m_shader.setViewProjection(view, projection);
 	m_shader.setMat4("model", modelMatrix);
-	m_shader.setDirectionalLight(dirLight);
-
 	m_model.draw(m_shader, color);
 }
 
@@ -34,7 +32,7 @@ std::pair<glm::vec3, glm::vec3> Object::getBoundingBox() const {
 glm::vec3 Object::getCenter() const {
 	auto boundingBox = getBoundingBox();
 	glm::vec3 center = (boundingBox.first + boundingBox.second) / 2.0f;
-	return center;
+	return center * m_scale;
 }
 
 float Object::getHeightOfObject() const {
@@ -46,8 +44,10 @@ float Object::getHeightOfObject() const {
 void Object::setPosition(glm::vec3 pos) { m_pos = pos; }
 
 void Object::setPositionCentered(glm::vec3 pos) {
-	glm::vec3 center = getCenter() * m_scale;
+	glm::vec3 center = getCenter();
 	center.y = 0.0f;
 	pos -= center;
 	setPosition(pos);
 }
+
+Contour Object::getSlice(double sliceHeight) { return m_model.getSlice(sliceHeight); }

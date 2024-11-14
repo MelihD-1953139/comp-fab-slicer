@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 
+#include "contour.h"
 #include "mesh.h"
 #include "shader.h"
 
@@ -21,6 +22,8 @@ class Model {
 	std::string getDirectory() { return m_directory; }
 	glm::vec3 getMin() const;
 	glm::vec3 getMax() const;
+
+	Contour getSlice(double sliceHeight);
 
    private:
 	std::vector<Mesh> m_meshes;
