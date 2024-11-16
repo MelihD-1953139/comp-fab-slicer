@@ -97,7 +97,7 @@ void Shader::setMaterial(glm::vec3 &ambient, glm::vec3 &diffuse, glm::vec3 &spec
 void Shader::setPointLight(PointLight &light, int index) {
 	// TODO: When profiling this is taking up the most time, check if i can improve it
 	//* CURRENTLY: setting the position for each light but keeiping the rest of the values the same
-	//for each light. Not good
+	// for each light. Not good
 	//* COPILOT: This implementation is not good, i should use a uniform buffer object
 
 	setVec3("pointLightPositions[" + std::to_string(index) + "]", light.position);
@@ -118,7 +118,7 @@ void Shader::setDirectionalLight(DirectionalLight &light) {
 		setVec3("dirLight.specular", light.specular);
 	}
 }
-void Shader::setViewProjection(glm::mat4 &view, glm::mat4 &projection) const {
+void Shader::setViewProjection(const glm::mat4 &view, const glm::mat4 &projection) const {
 	setMat4("view", view);
 	setMat4("projection", projection);
 }

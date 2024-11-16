@@ -3,7 +3,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 
-#include "contour.h"
 #include "resourceManager.h"
 
 //==================== Public ====================
@@ -75,7 +74,7 @@ void Mesh::initialize() {
 	glBindVertexArray(0);
 }
 
-Contour Mesh::getSlice(double sliceHeight) {
+std::optional<Slice> Mesh::getSlice(double sliceHeight) {
 	std::vector<Line> lineSegments;
 	for (auto &triangle : m_triangles) {
 		if (triangle.getYmin() >= sliceHeight || triangle.getYmax() <= sliceHeight) continue;
@@ -90,14 +89,35 @@ Contour Mesh::getSlice(double sliceHeight) {
 			float t = (sliceHeight - v1.y) / (v2.y - v1.y);
 			segment.setNextPoint(v1 + t * (v2 - v1));
 		}
-		lineSegments.push_back(segment);
+		lineSegments.push_back(segment * glm::vec3(1.0f, 0.0f, 1.0f));
 	}
 
-	for (auto &line : lineSegments) {
-		std::cout << line.p1.x << " " << line.p1.z << " -> " << line.p2.x << " " << line.p2.z
-				  << std::endl;
-	}
+	// auto referencePoint = glm::vec3(0.0f);
+	// for (auto &line : lineSegments) {
+	// 	line *= glm::vec3(1.0f, 0.0f, 1.0f);
+	// 	referencePoint += line.p1 + 0.5f * (line.p2 - line.p1);
+	// }
+	// referencePoint /= lineSegments.size();
+
+	// std::cout << "Reference point: " << referencePoint.x << " " << referencePoint.z << std::endl;
+
+	// std::sort(lineSegments.begin(), lineSegments.end(),
+	// 		  [&referencePoint](const Line &a, const Line &b) {
+	// 			  auto centerA = a.p1 + 0.5f * (a.p2 - a.p1);
+	// 			  auto centerB = b.p1 + 0.5f * (b.p2 - b.p1);
+
+	// 			  return glm::atan(-(centerA.z - referencePoint.z), centerA.x - referencePoint.x) >
+	// 					 glm::atan(-(centerB.z - referencePoint.z), centerB.x - referencePoint.x);
+	// 		  });
+
+	// // std::cout << "After sorting" << std::endl;
+	// for (auto &line : lineSegments) {
+	// 	line.sort(referencePoint);
+	// 	auto center = line.p1 + 0.5f * (line.p2 - line.p1);
+	// 	std::cout << line.p1.x << " " << line.p1.z << " -> " << line.p2.x << " " << line.p2.z
+	// 			  << std::endl;
+	// }
 
 	if (!lineSegments.empty()) return {lineSegments};
-	return {};
+	return std::nullopt;
 }

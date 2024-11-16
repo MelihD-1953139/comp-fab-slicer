@@ -31,7 +31,8 @@ struct ControlSettings {
 	bool updateSlice = false;
 };
 
-void showControlPanel(ControlSettings& settings, Printer& printer, Object& model) {
+void showControlPanel(ControlSettings& settings, Printer& printer, Object& model,
+					  bool& shouldSlice) {
 	ImGui::Begin("Control Panel");
 	ImGui::Text("Printer settings");
 
@@ -52,9 +53,8 @@ void showControlPanel(ControlSettings& settings, Printer& printer, Object& model
 		model.scale(settings.scaleFactorObject);
 	}
 
-	if (ImGui::Button("Slice")) {
-		model.getSlice(settings.sliceIndex * settings.printNozzle + 0.000000001);
-	}
+	shouldSlice = ImGui::Button("Slice");
+
 	ImGui::End();
 }
 
@@ -122,6 +122,7 @@ int main(int argc, char* argv[]) {
 	Framebuffer viewBuffer(windowSize.first, windowSize.second);
 	Framebuffer sliceBuffer(printer.getSize().x, printer.getSize().z);
 
+	bool shouldSlice = false;
 	// Run the main loop
 	window->whileOpen([&]() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -129,7 +130,7 @@ int main(int argc, char* argv[]) {
 		ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
 
 		if (show_demo_window) ImGui::ShowDemoWindow();
-		showControlPanel(settings, printer, model);
+		showControlPanel(settings, printer, model, shouldSlice);
 
 		plane.setPositionCentered(
 			printer.getCenter() * glm::vec3(1.0f, 0.0f, 1.0f) +
@@ -171,16 +172,16 @@ int main(int argc, char* argv[]) {
 			auto projection = topDownCamera.getProjectionMatrix(width, height);
 
 			sliceBuffer.bind();
-			{
+			if (shouldSlice) {
 				sliceBuffer.resize(width, height);
 				glViewport(0, 0, width, height);
 				sliceBuffer.clear();
-				shader.setViewProjection(view, projection);
 
-				// printer.render(view, projection, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
-
-				// model.getSlice(settings.sliceIndex * settings.printNozzle + 0.000000001)
-				// 	.draw(shader, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+				auto slice =
+					model.getSlice(settings.sliceIndex * settings.printNozzle + 0.000000001);
+				if (slice)
+					slice.value().render(shader, view, projection,
+										 glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
 			}
 			sliceBuffer.unbind();
 

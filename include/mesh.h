@@ -3,11 +3,12 @@
 #include <glad/gl.h>
 
 #include <glm/glm.hpp>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include "contour.h"
 #include "shader.h"
+#include "slice.h"
 
 struct Vertex {
 	glm::vec3 position;
@@ -34,7 +35,7 @@ class Mesh {
 
 	const std::vector<Triangle> &getTriangles() const { return m_triangles; }
 
-	Contour getSlice(double sliceHeight);
+	std::optional<Slice> getSlice(double sliceHeight);
 
    protected:
 	void initialize();

@@ -50,4 +50,4 @@ void Object::setPositionCentered(glm::vec3 pos) {
 	setPosition(pos);
 }
 
-Contour Object::getSlice(double sliceHeight) { return m_model.getSlice(sliceHeight); }
+std::optional<Slice> Object::getSlice(double sliceHeight) { return m_model.getSlice(sliceHeight); }

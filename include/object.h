@@ -3,9 +3,9 @@
 #include <glm/glm.hpp>
 #include <vector>
 
-#include "contour.h"
 #include "model.h"
 #include "shader.h"
+#include "slice.h"
 
 class Object {
    public:
@@ -21,7 +21,7 @@ class Object {
 	void setPosition(glm::vec3 pos);
 	void setPositionCentered(glm::vec3 pos);
 
-	Contour getSlice(double sliceHeight);
+	std::optional<Slice> getSlice(double sliceHeight);
 
    protected:
 	glm::vec3 m_pos;

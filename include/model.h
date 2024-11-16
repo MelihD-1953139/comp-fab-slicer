@@ -3,11 +3,12 @@
 #include <assimp/scene.h>
 
 #include <glm/glm.hpp>
+#include <optional>
 #include <vector>
 
-#include "contour.h"
 #include "mesh.h"
 #include "shader.h"
+#include "slice.h"
 
 class Model {
    public:
@@ -23,7 +24,7 @@ class Model {
 	glm::vec3 getMin() const;
 	glm::vec3 getMax() const;
 
-	Contour getSlice(double sliceHeight);
+	std::optional<Slice> getSlice(double sliceHeight);
 
    private:
 	std::vector<Mesh> m_meshes;

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <string>
-#include <glm/glm.hpp>
 #include <glad/gl.h>
 
-struct PointLight
-{
+#include <glm/glm.hpp>
+#include <string>
+
+struct PointLight {
 	glm::vec3 position;
 	glm::vec3 ambient;
 	glm::vec3 diffuse;
@@ -15,17 +15,15 @@ struct PointLight
 	float quadratic;
 };
 
-struct DirectionalLight
-{
+struct DirectionalLight {
 	glm::vec3 direction;
 	glm::vec3 ambient;
 	glm::vec3 diffuse;
 	glm::vec3 specular;
 };
 
-class Shader
-{
-public:
+class Shader {
+   public:
 	GLuint m_id;
 
 	Shader();
@@ -43,13 +41,14 @@ public:
 	void setMat4(const std::string &name, glm::mat4 value) const;
 	void setVec3(const std::string &name, glm::vec3 value) const;
 	void setVec4(const std::string &name, glm::vec4 value) const;
-	void setMaterial(glm::vec3 &ambient, glm::vec3 &diffuse, glm::vec3 &specular, glm::vec3 &emissive, float shininess) const;
+	void setMaterial(glm::vec3 &ambient, glm::vec3 &diffuse, glm::vec3 &specular,
+					 glm::vec3 &emissive, float shininess) const;
 	void setPointLight(PointLight &light, int index);
 	void setDirectionalLight(DirectionalLight &light);
-	void setViewProjection(glm::mat4 &view, glm::mat4 &projection) const;
+	void setViewProjection(const glm::mat4 &view, const glm::mat4 &projection) const;
 	void setModel(glm::mat4 &model) const;
 
-private:
+   private:
 	bool m_hasVertShader;
 	bool m_hasFragShader;
 	bool m_isLinked;

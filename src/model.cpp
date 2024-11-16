@@ -114,7 +114,7 @@ std::vector<unsigned int> Model::extractIndices(aiMesh *mesh) {
 	return indices;
 }
 
-Contour Model::getSlice(double sliceHeight) {
+std::optional<Slice> Model::getSlice(double sliceHeight) {
 	assert(m_meshes.size() == 1 && "Only one mesh is supported for slicing");
 	return m_meshes[0].getSlice(sliceHeight);
 }
