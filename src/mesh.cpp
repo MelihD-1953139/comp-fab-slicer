@@ -15,9 +15,9 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices)
 	}
 }
 
-void Mesh::draw(Shader &shader, glm::vec4 color) {
+void Mesh::draw(Shader &shader, glm::vec3 color) {
 	shader.use();
-	shader.setVec4("color", color);
+	shader.setVec3("color", color);
 
 	glBindVertexArray(m_VAO);
 	glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT, 0);

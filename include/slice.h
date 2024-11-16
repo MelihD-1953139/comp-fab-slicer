@@ -55,7 +55,7 @@ class Contour {
    public:
 	Contour(std::vector<glm::vec3> points);
 	Contour(Clipper2Lib::PathD path);
-	void draw(Shader& shader, glm::vec4 color);
+	void draw(Shader& shader, glm::vec3 color);
 	const std::vector<glm::vec3>& getPoints() const { return m_points; }
 
 	operator Clipper2Lib::PathD() const;
@@ -74,8 +74,7 @@ class Slice {
 	Slice(std::vector<Line> lineSegments);
 	Slice(const Clipper2Lib::PathsD& paths);
 
-	void render(Shader& shader, const glm::mat4 view, const glm::mat4& projection,
-				glm::vec4 color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+	void render(Shader& shader, const glm::mat4 view, const glm::mat4& projection, glm::vec3 color);
 
 	operator Clipper2Lib::PathsD() const;
 

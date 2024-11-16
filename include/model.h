@@ -16,7 +16,7 @@ class Model {
 	Model(const char *path);
 	~Model();
 
-	void draw(Shader &shader, glm::vec4 color);
+	void draw(Shader &shader, glm::vec3 color);
 
 	std::vector<Mesh> getMeshes() { return m_meshes; }
 	std::string getName() { return m_name; }

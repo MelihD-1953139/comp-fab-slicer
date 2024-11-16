@@ -9,8 +9,8 @@
 
 class Object {
    public:
-	Object(Model &model, Shader &shader, glm::vec3 pos);
-	virtual void render(glm::mat4 view, glm::mat4 projection, glm::vec4 color);
+	Object(Model &model, Shader &shader, glm::vec3 pos = glm::vec3(0.0f));
+	virtual void render(glm::mat4 view, glm::mat4 projection, glm::vec3 color);
 	void scale(glm::vec3 scale);
 	void scale(float scale);
 	std::pair<glm::vec3, glm::vec3> getBoundingBox() const;

@@ -20,7 +20,7 @@ Model::Model(const char *path) { loadModel(path); }
 
 Model::~Model() { m_meshes.clear(); }
 
-void Model::draw(Shader &shader, glm::vec4 color) {
+void Model::draw(Shader &shader, glm::vec3 color) {
 	for (Mesh &mesh : m_meshes) {
 		mesh.draw(shader, color);
 	}

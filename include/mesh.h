@@ -28,7 +28,7 @@ class Mesh {
    public:
 	Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices);
 
-	void draw(Shader &shader, glm::vec4 color = glm::vec4(.3f, .3f, .3f, 1.0f));
+	void draw(Shader &shader, glm::vec3 color);
 
 	glm::vec3 getMin() const;
 	glm::vec3 getMax() const;

@@ -14,9 +14,9 @@ Contour::Contour(Clipper2Lib::PathD path) {
 	init();
 }
 
-void Contour::draw(Shader &shader, glm::vec4 color) {
+void Contour::draw(Shader &shader, glm::vec3 color) {
 	shader.use();
-	shader.setVec4("color", color);
+	shader.setVec3("color", color);
 
 	glBindVertexArray(m_VAO);
 	glDrawArrays(GL_LINE_STRIP, 0, m_points.size());
@@ -83,14 +83,6 @@ Slice::Slice(std::vector<Line> lineSegments) {
 			}
 		}
 	}
-
-	// for (auto &contour : m_contours) {
-	// 	for (auto &point : contour.getPoints()) {
-	// 		std::cout << "(" << point.x << ", " << point.z << ") ";
-	// 		if (point != contour.getPoints().back()) std::cout << " -> ";
-	// 	}
-	// 	std::cout << std::endl;
-	// }
 }
 
 Slice::Slice(const Clipper2Lib::PathsD &paths) {
@@ -100,7 +92,7 @@ Slice::Slice(const Clipper2Lib::PathsD &paths) {
 }
 
 void Slice::render(Shader &shader, const glm::mat4 view, const glm::mat4 &projection,
-				   glm::vec4 color) {
+				   glm::vec3 color) {
 	shader.setViewProjection(view, projection);
 	for (auto &contour : m_contours) {
 		contour.draw(shader, color);

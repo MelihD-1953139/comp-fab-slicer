@@ -9,7 +9,7 @@
 Object::Object(Model &model, Shader &shader, glm::vec3 pos)
 	: m_model(model), m_shader(shader), m_scale(1.0f), m_pos(pos) {}
 
-void Object::render(glm::mat4 view, glm::mat4 projection, glm::vec4 color) {
+void Object::render(glm::mat4 view, glm::mat4 projection, glm::vec3 color) {
 	auto modelMatrix = glm::translate(glm::mat4(1.0f), m_pos);
 	modelMatrix = glm::scale(modelMatrix, m_scale);
 
