@@ -21,8 +21,8 @@ public:
               const glm::vec3 &colorSlice);
 
 private:
-  Model &m_base;
-  Model &m_slicePlane;
+  Model m_base;
+  Model m_slicePlane;
 
   float m_nozzle;
   glm::ivec3 m_size;

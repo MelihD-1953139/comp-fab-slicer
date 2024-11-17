@@ -1,14 +1,11 @@
 #include "printer.h"
-#include "resourceManager.h"
 
 #include <Nexus.h>
 #include <glm/gtc/matrix_transform.hpp>
 
 Printer::Printer(const char *base, const char *slicePath, glm::ivec3 size,
                  float nozzle)
-    : m_base(ResourceManager::loadModel("base", base)),
-      m_slicePlane(ResourceManager::loadModel("slicePlane", slicePath)),
-      m_size(size), m_nozzle(nozzle) {
+    : m_base(base), m_slicePlane(slicePath), m_size(size), m_nozzle(nozzle) {
   m_base.setScale(glm::vec3(m_size));
   m_slicePlane.setScale(glm::vec3(m_size) * glm::vec3(1.0f, 0.0f, 1.0f));
 }

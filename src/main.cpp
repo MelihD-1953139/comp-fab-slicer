@@ -1,17 +1,17 @@
 #define ZEROY glm::vec3(1.0f, 0.0f, 1.0f)
 
-#include <Nexus.h>
-#include <Nexus/Window/GLFWWindow.h>
-#include <clipper2/clipper.h>
-
-#include <glm/glm.hpp>
-#include <memory>
-#include <string>
-
 #include "camera.h"
 #include "framebuffer.h"
 #include "printer.h"
 #include "resourceManager.h"
+
+#include <Nexus.h>
+#include <Nexus/Window/GLFWWindow.h>
+#include <clipper2/clipper.h>
+#include <glm/glm.hpp>
+#include <imgui.h>
+#include <memory>
+#include <string>
 
 #define SHADER_VERT_PATH "../res/shaders/base.vert"
 #define SHADER_FRAG_PATH "../res/shaders/base.frag"
@@ -29,6 +29,7 @@ struct State {
   float layerHeight;
   int maxSliceIndex;
   int sliceIndex;
+  char fileBuffer[256];
 };
 
 int main(int argc, char *argv[]) {
@@ -47,8 +48,7 @@ int main(int argc, char *argv[]) {
       ResourceManager::loadShader("shader", SHADER_VERT_PATH, SHADER_FRAG_PATH);
 
   Printer printer("../res/models/plane.obj", "../res/models/plane.obj");
-
-  auto model = ResourceManager::loadModel("model", argv[1]);
+  Model model(argv[1]);
   model.setPositionCentered(printer.getCenter() * ZEROY);
 
   PerspectiveCamera camera(0.0f, 45.0f, 300.0f);
@@ -62,7 +62,10 @@ int main(int argc, char *argv[]) {
       .maxSliceIndex =
           static_cast<int>(std::ceil(model.getHeight() / state.layerHeight)),
       .sliceIndex = 0,
+      .fileBuffer = "",
   };
+
+  strcpy(state.fileBuffer, argv[1]);
   printer.setSliceHeight(state.layerHeight * state.sliceIndex);
 
   Framebuffer viewBuffer(state.windowSize.first, state.windowSize.second);
@@ -115,8 +118,14 @@ int main(int argc, char *argv[]) {
                           "%.2f mm");
       }
 
-      // if (ImGui::CollapsingHeader("Object settings")) {
-      // }
+      if (ImGui::CollapsingHeader("Object settings")) {
+        ImGui::InputText("Model file", state.fileBuffer,
+                         IM_ARRAYSIZE(state.fileBuffer));
+        if (ImGui::Button("Load")) {
+          model = Model(state.fileBuffer);
+          model.setPositionCentered(printer.getCenter() * ZEROY);
+        }
+      }
 
       if (ImGui::CollapsingHeader("Slice settings")) {
         if (ImGui::SliderInt("Slice Index", &state.sliceIndex, 1,
