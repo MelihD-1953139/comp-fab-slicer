@@ -1,27 +1,30 @@
 #pragma once
 #include <glm/glm.hpp>
 
-#include "object.h"
-#include "resourceManager.h"
+#include "glm/fwd.hpp"
+#include "model.h"
 
-class Printer : public Object {
-	glm::ivec3 size = {220, 250, 220};
+class Printer {
+public:
+  Printer(const char *base, const char *slicePath,
+          glm::ivec3 size = {220, 250, 220}, float nozzle = 0.4f);
 
-   public:
-	float nozzle = 0.4f;
+  void setSize(glm::ivec3 size);
+  glm::ivec3 getSize() const;
+  glm::vec3 getCenter() const;
+  float getNozzle() const;
+  float *getNozzlePtr();
+  void setSliceHeight(float sliceHeight);
 
-	Printer(std::string model_path)
-		: Object(ResourceManager::loadModel("printer", model_path.c_str()),
-				 ResourceManager::getShader("shader"), glm::vec3(0.0f)) {
-		scale(glm::vec3(size));
-	}
+  void render(Shader &shader, const glm::mat4 &view,
+              const glm::mat4 &projection, const glm::vec3 &colorBase,
+              const glm::vec3 &colorSlice);
 
-	void setSize(glm::ivec3 size) {
-		this->size = size;
-		scale(glm::vec3(size));
-	}
+private:
+  Model &m_base;
+  Model &m_slicePlane;
 
-	glm::ivec3 getSize() const { return size; }
-
-	virtual glm::vec3 getCenter() const override { return glm::vec3(size) / 2.0f; }
+  float m_nozzle;
+  glm::ivec3 m_size;
+  float m_sliceHeight;
 };

@@ -8,5 +8,6 @@
 		"*.inc": "cpp",
 		"array": "cpp",
 		"__node_handle": "cpp"
-	}
+	},
+	"C_Cpp.default.compilerPath": "/usr/bin/clang"
 }

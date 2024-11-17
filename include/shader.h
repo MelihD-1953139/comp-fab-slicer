@@ -41,12 +41,7 @@ class Shader {
 	void setMat4(const std::string &name, glm::mat4 value) const;
 	void setVec3(const std::string &name, glm::vec3 value) const;
 	void setVec4(const std::string &name, glm::vec4 value) const;
-	void setMaterial(glm::vec3 &ambient, glm::vec3 &diffuse, glm::vec3 &specular,
-					 glm::vec3 &emissive, float shininess) const;
-	void setPointLight(PointLight &light, int index);
-	void setDirectionalLight(DirectionalLight &light);
-	void setViewProjection(const glm::mat4 &view, const glm::mat4 &projection) const;
-	void setModel(glm::mat4 &model) const;
+	void setMVP(const glm::mat4 &model, const glm::mat4 &view, const glm::mat4 &projection) const;
 
    private:
 	bool m_hasVertShader;
