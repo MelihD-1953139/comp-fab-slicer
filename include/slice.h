@@ -82,6 +82,8 @@ public:
 
   operator Clipper2Lib::PathsD() const;
 
+  const std::vector<Contour> &getContours() const { return m_contours; }
+
 private:
   const float EPSILON = 0.001;
   std::vector<Contour> m_contours;

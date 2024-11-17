@@ -2,6 +2,7 @@
 
 #include "camera.h"
 #include "framebuffer.h"
+#include "gcodeWriter.h"
 #include "printer.h"
 #include "resourceManager.h"
 
@@ -30,6 +31,7 @@ struct State {
   int maxSliceIndex;
   int sliceIndex;
   char fileBuffer[256];
+  std::vector<Slice> slices;
 };
 
 int main(int argc, char *argv[]) {
@@ -142,8 +144,19 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      state.slice =
-          ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+      if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+        state.slices.push_back(
+            model.getSlice(state.layerHeight * state.sliceIndex + 0.000000001));
+      }
+      if (ImGui::Button("Export to g-code",
+                        ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+        GcodeWriter::NewGcodeFile("output.gcode");
+        GcodeWriter::WriteHeader();
+        GcodeWriter::WriteSlice(state.slices.back(), state.layerHeight,
+                                printer.getNozzle());
+        GcodeWriter::WriteFooter();
+        GcodeWriter::CloseGcodeFile();
+      }
     }
     ImGui::End();
 
@@ -177,7 +190,7 @@ int main(int argc, char *argv[]) {
       ImGui::Begin("Slice View");
       {
         sliceBuffer.bind();
-        if (state.slice) {
+        if (!state.slices.empty()) {
           const int width = ImGui::GetContentRegionAvail().x;
           const int height = ImGui::GetContentRegionAvail().y;
           auto view = topDownCamera.getViewMatrix(printer.getCenter() * ZEROY);
@@ -186,8 +199,8 @@ int main(int argc, char *argv[]) {
           glViewport(0, 0, width, height);
           sliceBuffer.clear();
 
-          model.getSlice(state.sliceIndex * state.layerHeight + 0.000000001)
-              .render(shader, view, projection, glm::vec3(1.0f, 0.0f, 0.0f));
+          state.slices.back().render(shader, view, projection,
+                                     glm::vec3(1.0f, 0.0f, 0.0f));
         }
         sliceBuffer.unbind();
 
