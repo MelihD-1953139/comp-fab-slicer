@@ -111,7 +111,7 @@ int main(int argc, char* argv[]) {
 					model.setPositionCentered(printer.getCenter() * ZEROY);
 				}
 
-				ImGui::InputFloat("##Printer Nozel", &printer.nozzle, 0.0f, 0.0f, "%.2f mm");
+				ImGui::InputFloat("Printer Nozel", &printer.nozzle, 0.0f, 0.0f, "%.2f mm");
 			}
 
 			// if (ImGui::CollapsingHeader("Object settings")) {
@@ -120,8 +120,11 @@ int main(int argc, char* argv[]) {
 			if (ImGui::CollapsingHeader("Slice settings")) {
 				ImGui::SliderInt("Slice Index", &state.sliceIndex, 1, state.maxSliceIndex);
 
-				if (ImGui::InputFloat("Layer Height", &state.layerHeight, 0.0f, 0.0f, "%.2f mm"))
+				if (ImGui::InputFloat("Layer Height", &state.layerHeight, 0.0f, 0.0f, "%.2f mm")) {
 					state.layerHeight = std::clamp(state.layerHeight, 0.0f, printer.nozzle * 0.8f);
+					state.maxSliceIndex =
+						static_cast<int>(std::ceil(model.getHeightOfObject() / state.layerHeight));
+				}
 			}
 
 			state.slice = ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0));
@@ -171,9 +174,8 @@ int main(int argc, char* argv[]) {
 					glViewport(0, 0, width, height);
 					sliceBuffer.clear();
 
-					auto slice = model.getSlice(state.sliceIndex * state.layerHeight + 0.000000001);
-					if (slice)
-						slice.value().render(shader, view, projection, glm::vec3(1.0f, 0.0f, 0.0f));
+					model.getSlice(state.sliceIndex * state.layerHeight + 0.000000001)
+						.render(shader, view, projection, glm::vec3(1.0f, 0.0f, 0.0f));
 				}
 				sliceBuffer.unbind();
 

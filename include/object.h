@@ -21,7 +21,7 @@ class Object {
 	void setPosition(glm::vec3 pos);
 	void setPositionCentered(glm::vec3 pos);
 
-	std::optional<Slice> getSlice(double sliceHeight);
+	Slice getSlice(double sliceHeight);
 
    protected:
 	glm::vec3 m_pos;

@@ -1,9 +1,6 @@
 {
 	"cmake.debugConfig": {
-		"args": [
-			"/Users/kobe/Documents/School/2024-2025/Computational_Fabrication/Project",
-			"res/models/perimeter-test(easy).stl"
-		]
+		"args": ["../res/models/cube.stl"]
 	},
 	"files.associations": {
 		"*.make": "makefile",

@@ -64,9 +64,6 @@ class Contour {
 	std::vector<glm::vec3> m_points;
 
 	unsigned int m_VAO, m_VBO;
-
-   private:
-	void init();
 };
 
 class Slice {

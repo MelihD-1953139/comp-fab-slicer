@@ -1,11 +1,27 @@
 #include "slice.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
+#include <Nexus.h>
+
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>
 #include <set>
 
-Contour::Contour(std::vector<glm::vec3> points) : m_points(points) { init(); }
+Contour::Contour(std::vector<glm::vec3> points) : m_points(points) {
+	glGenVertexArrays(1, &m_VAO);
+	glGenBuffers(1, &m_VBO);
+
+	glBindVertexArray(m_VAO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
+	glBufferData(GL_ARRAY_BUFFER, m_points.size() * sizeof(glm::vec3), &m_points[0],
+				 GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0);
+	glEnableVertexAttribArray(0);
+
+	glBindVertexArray(0);
+}
 
 Contour::Contour(Clipper2Lib::PathD path) {
 	for (auto &point : path) {
@@ -29,22 +45,6 @@ Contour::operator Clipper2Lib::PathD() const {
 		path.emplace_back(point.x, point.z);
 	}
 	return path;
-}
-
-void Contour::init() {
-	glGenVertexArrays(1, &m_VAO);
-	glGenBuffers(1, &m_VBO);
-
-	glBindVertexArray(m_VAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-	glBufferData(GL_ARRAY_BUFFER, m_points.size() * sizeof(glm::vec3), &m_points[0],
-				 GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0);
-	glEnableVertexAttribArray(0);
-
-	glBindVertexArray(0);
 }
 
 Slice::Slice(std::vector<Line> lineSegments) {
