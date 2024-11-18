@@ -145,10 +145,14 @@ int main(int argc, char *argv[]) {
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        auto slice =
-            model.getSlice(state.layerHeight * state.sliceIndex + 0.000000001);
-        auto paths = Clipper2Lib::Union(slice, Clipper2Lib::FillRule::EvenOdd);
-        state.slices.push_back(paths);
+
+        state.slices.clear();
+        for (int i = 0; i < state.maxSliceIndex; ++i) {
+          auto slice = model.getSlice(state.layerHeight * i + 0.000000001);
+          auto paths =
+              Clipper2Lib::Union(slice, Clipper2Lib::FillRule::EvenOdd);
+          state.slices.push_back(paths);
+        }
       }
       if (ImGui::Button("Export to g-code",
                         ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
@@ -203,7 +207,7 @@ int main(int argc, char *argv[]) {
           glViewport(0, 0, width, height);
 
           sliceBuffer.clear();
-          state.slices.back().render(shader, view, projection);
+          state.slices[state.sliceIndex].render(shader, view, projection);
         }
         sliceBuffer.unbind();
 
