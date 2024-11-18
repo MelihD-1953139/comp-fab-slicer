@@ -34,8 +34,9 @@ struct State {
   int maxSliceIndex;
   int sliceIndex;
   char fileBuffer[256];
+  int shellCount;
   std::vector<Slice> slices;
-  std::vector<Clipper2Lib::PathsD> paths;
+  std::vector<Clipper2Lib::PathsD> paths; // each slice is a PathsD
 };
 
 int main(int argc, char *argv[]) {
@@ -68,6 +69,7 @@ int main(int argc, char *argv[]) {
           static_cast<int>(std::ceil(model.getHeight() / state.layerHeight)),
       .sliceIndex = 0,
       .fileBuffer = "",
+      .shellCount = 1,
   };
 
   strcpy(state.fileBuffer, argv[1]);
@@ -145,18 +147,31 @@ int main(int argc, char *argv[]) {
           state.maxSliceIndex = static_cast<int>(
               std::ceil(model.getHeight() / state.layerHeight));
         }
+
+        if (ImGui::InputInt("Shell count", &state.shellCount)) {
+          state.shellCount = std::clamp(state.shellCount, 1, 10);
+        }
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 
         state.slices.clear();
+        state.paths.clear();
+
         for (int i = 0; i < state.maxSliceIndex; ++i) {
           auto slice = model.getSlice(state.layerHeight * i + 0.000000001);
-          auto paths = Union(slice, Clipper2Lib::FillRule::EvenOdd);
-          paths = InflatePaths(paths, -printer.getNozzle() / 2.0f,
-                               JoinType::Miter, EndType::Polygon);
+          auto perimeter = Union(slice, FillRule::EvenOdd);
+          perimeter = InflatePaths(perimeter, -printer.getNozzle() / 2.0f,
+                                   JoinType::Miter, EndType::Polygon);
 
-          state.paths.push_back(paths);
+          for (int j = 0; j < state.shellCount; ++j) {
+            auto shells = InflatePaths(perimeter, -printer.getNozzle() * j,
+                                       JoinType::Miter, EndType::Polygon);
+            for (auto &shell : shells)
+              perimeter.push_back(shell);
+          }
+
+          state.paths.push_back(perimeter);
         }
         // TODO do slicing stuff
         for (auto &paths : state.paths)

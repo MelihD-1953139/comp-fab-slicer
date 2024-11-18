@@ -81,7 +81,7 @@ Slice::Slice(std::vector<Line> lineSegments) {
       if (glm::distance(points.back(), line.p1) < EPSILON) {
         if (glm::distance(firstPoint, line.p2) < EPSILON) {
           points.push_back(firstPoint);
-          m_contours.emplace_back(points);
+          m_shells.emplace_back(points);
           points.clear();
           lineSegments.erase(lineSegments.begin() + i);
         } else {
@@ -92,7 +92,7 @@ Slice::Slice(std::vector<Line> lineSegments) {
       } else if (glm::distance(points.back(), line.p2) < EPSILON) {
         if (glm::distance(firstPoint, line.p1) < EPSILON) {
           points.push_back(firstPoint);
-          m_contours.emplace_back(points);
+          m_shells.emplace_back(points);
           points.clear();
           lineSegments.erase(lineSegments.begin() + i);
         } else {
@@ -106,21 +106,21 @@ Slice::Slice(std::vector<Line> lineSegments) {
 
 Slice::Slice(const PathsD &paths) {
   for (auto &path : paths) {
-    m_contours.emplace_back(path);
+    m_shells.emplace_back(path);
   }
 }
 
 void Slice::render(Shader &shader, const glm::mat4 view,
                    const glm::mat4 &projection) {
   shader.setMVP(glm::mat4(1.0f), view, projection);
-  for (auto &contour : m_contours) {
+  for (auto &contour : m_shells) {
     contour.draw(shader, GREEN);
   }
 }
 
 Slice::operator PathsD() const {
   PathsD paths;
-  for (auto &contour : m_contours) {
+  for (auto &contour : m_shells) {
     paths.emplace_back(contour);
   }
   return paths;

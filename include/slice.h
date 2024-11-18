@@ -8,6 +8,8 @@
 
 #include "shader.h"
 
+using namespace Clipper2Lib;
+
 #define GREEN glm::vec3(0.0f, 1.0f, 0.0f)
 #define YELLOW glm::vec3(1.0f, 1.0f, 0.0f)
 #define BLUE glm::vec3(0.0f, 0.0f, 1.0f)
@@ -28,7 +30,7 @@ public:
   void draw(Shader &shader, glm::vec3 color);
   const std::vector<glm::vec3> &getPoints() const { return m_points; }
 
-  operator Clipper2Lib::PathD() const;
+  operator PathD() const;
 
 private:
   std::vector<glm::vec3> m_points;
@@ -49,9 +51,9 @@ public:
 
   operator Clipper2Lib::PathsD() const;
 
-  const std::vector<Contour> &getContours() const { return m_contours; }
+  const std::vector<Contour> &getContours() const { return m_shells; }
 
 private:
   const float EPSILON = 0.001;
-  std::vector<Contour> m_contours;
+  std::vector<Contour> m_shells;
 };
