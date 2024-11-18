@@ -1,5 +1,6 @@
 #include "Nexus/Log.h"
 #include "clipper2/clipper.core.h"
+#include "clipper2/clipper.offset.h"
 #define ZEROY glm::vec3(1.0f, 0.0f, 1.0f)
 
 #include "camera.h"
@@ -19,6 +20,7 @@
 #define SLICEVIEW_VERT_PATH "../res/shaders/sliceview.vert"
 
 using namespace Nexus;
+using namespace Clipper2Lib;
 
 void usage(const char *program) {
   Logger::info("Usage: {} <filename>", program);
@@ -33,6 +35,7 @@ struct State {
   int sliceIndex;
   char fileBuffer[256];
   std::vector<Slice> slices;
+  std::vector<Clipper2Lib::PathsD> paths;
 };
 
 int main(int argc, char *argv[]) {
@@ -149,10 +152,15 @@ int main(int argc, char *argv[]) {
         state.slices.clear();
         for (int i = 0; i < state.maxSliceIndex; ++i) {
           auto slice = model.getSlice(state.layerHeight * i + 0.000000001);
-          auto paths =
-              Clipper2Lib::Union(slice, Clipper2Lib::FillRule::EvenOdd);
-          state.slices.push_back(paths);
+          auto paths = Union(slice, Clipper2Lib::FillRule::EvenOdd);
+          paths = InflatePaths(paths, -printer.getNozzle() / 2.0f,
+                               JoinType::Miter, EndType::Polygon);
+
+          state.paths.push_back(paths);
         }
+        // TODO do slicing stuff
+        for (auto &paths : state.paths)
+          state.slices.push_back(paths);
       }
       if (ImGui::Button("Export to g-code",
                         ImVec2(ImGui::GetContentRegionAvail().x, 0))) {

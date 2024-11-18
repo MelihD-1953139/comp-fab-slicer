@@ -35,10 +35,7 @@ Shader::Shader(const char *vertexFilePath, const char *fragmentFilePath) {
   linkProgram();
 }
 
-Shader::~Shader() {
-  std::cout << "Deleting shader program" << std::endl;
-  glDeleteProgram(m_id);
-}
+Shader::~Shader() { glDeleteProgram(m_id); }
 
 bool Shader::addVertexShader(const char *vertexData) {
   m_vertShaderId = glCreateShader(GL_VERTEX_SHADER);
