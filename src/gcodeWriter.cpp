@@ -28,19 +28,20 @@ void GcodeWriter::WriteHeader() {
 
 void GcodeWriter::WriteSlice(const Slice &slice, float layerHeight,
                              float nozzle) {
-  bool first = true;
-  for (const Contour &contour : slice.getContours()) {
-    auto points = contour.getPoints();
-    m_file << "G1 F1200 X" << points[0].x << " Y" << points[0].z << " Z"
-           << layerHeight << "\n";
-    for (size_t i = 1; i < points.size(); i++) {
-      float extrusion =
-          layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
+  // bool first = true;
+  // for (const Contour &contour : slice.getContours()) {
+  //   auto points = contour.getPoints();
+  //   m_file << "G1 F1200 X" << points[0].x << " Y" << points[0].z << " Z"
+  //          << layerHeight << "\n";
+  //   for (size_t i = 1; i < points.size(); i++) {
+  //     float extrusion =
+  //         layerHeight * nozzle * glm::distance(points[i - 1], points[i]) /
+  //         FA;
 
-      m_file << "G1 X" << points[i].x << " Y" << points[i].z << " E "
-             << extrusion << "\n";
-    }
-  }
+  //     m_file << "G1 X" << points[i].x << " Y" << points[i].z << " E "
+  //            << extrusion << "\n";
+  //   }
+  // }
 }
 
 void GcodeWriter::WriteFooter() {

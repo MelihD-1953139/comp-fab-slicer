@@ -8,10 +8,13 @@
 
 #include "shader.h"
 
+#define GREEN glm::vec3(0.0f, 1.0f, 0.0f)
+#define YELLOW glm::vec3(1.0f, 1.0f, 0.0f)
+#define BLUE glm::vec3(0.0f, 0.0f, 1.0f)
+
 struct Line {
   glm::vec3 p1, p2;
   void setNextPoint(glm::vec3 point);
-  void sort(glm::vec3 referencePoint);
   Line operator*(glm::vec3 scale);
 
 private:
@@ -41,8 +44,8 @@ public:
   Slice(std::vector<Line> lineSegments);
   Slice(const Clipper2Lib::PathsD &paths);
 
-  void render(Shader &shader, const glm::mat4 view, const glm::mat4 &projection,
-              glm::vec3 color);
+  void render(Shader &shader, const glm::mat4 view,
+              const glm::mat4 &projection);
 
   operator Clipper2Lib::PathsD() const;
 

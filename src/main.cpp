@@ -1,10 +1,11 @@
+#include "Nexus/Log.h"
+#include "clipper2/clipper.core.h"
 #define ZEROY glm::vec3(1.0f, 0.0f, 1.0f)
 
 #include "camera.h"
 #include "framebuffer.h"
 #include "gcodeWriter.h"
 #include "printer.h"
-#include "resourceManager.h"
 
 #include <Nexus.h>
 #include <Nexus/Window/GLFWWindow.h>
@@ -12,10 +13,10 @@
 #include <glm/glm.hpp>
 #include <imgui.h>
 #include <memory>
-#include <string>
 
 #define SHADER_VERT_PATH "../res/shaders/base.vert"
 #define SHADER_FRAG_PATH "../res/shaders/base.frag"
+#define SLICEVIEW_VERT_PATH "../res/shaders/sliceview.vert"
 
 using namespace Nexus;
 
@@ -46,8 +47,7 @@ int main(int argc, char *argv[]) {
   auto window = std::unique_ptr<Window>(Window::create());
   window->setVSync(true);
 
-  auto shader =
-      ResourceManager::loadShader("shader", SHADER_VERT_PATH, SHADER_FRAG_PATH);
+  Shader shader(SHADER_VERT_PATH, SHADER_FRAG_PATH);
 
   Printer printer("../res/models/plane.obj", "../res/models/plane.obj");
   Model model(argv[1]);
@@ -145,8 +145,10 @@ int main(int argc, char *argv[]) {
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        state.slices.push_back(
-            model.getSlice(state.layerHeight * state.sliceIndex + 0.000000001));
+        auto slice =
+            model.getSlice(state.layerHeight * state.sliceIndex + 0.000000001);
+        auto paths = Clipper2Lib::Union(slice, Clipper2Lib::FillRule::EvenOdd);
+        state.slices.push_back(paths);
       }
       if (ImGui::Button("Export to g-code",
                         ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
@@ -193,14 +195,15 @@ int main(int argc, char *argv[]) {
         if (!state.slices.empty()) {
           const int width = ImGui::GetContentRegionAvail().x;
           const int height = ImGui::GetContentRegionAvail().y;
+
           auto view = topDownCamera.getViewMatrix(printer.getCenter() * ZEROY);
           auto projection = topDownCamera.getProjectionMatrix(width, height);
+
           sliceBuffer.resize(width, height);
           glViewport(0, 0, width, height);
-          sliceBuffer.clear();
 
-          state.slices.back().render(shader, view, projection,
-                                     glm::vec3(1.0f, 0.0f, 0.0f));
+          sliceBuffer.clear();
+          state.slices.back().render(shader, view, projection);
         }
         sliceBuffer.unbind();
 

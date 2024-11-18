@@ -2,31 +2,42 @@
 
 #include <glad/gl.h>
 
+#include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <string>
 
-Shader::Shader() {
-  m_id = glCreateProgram();
-  m_toDeleteProgram = true;
+std::string readFile(const char *filePath) {
+  std::string content;
+  std::ifstream filestream(filePath, std::ios::in);
+
+  if (!filestream.is_open()) {
+    std::cout << "Could not read file " << filePath << ". File does not exist."
+              << std::endl;
+    return "";
+  }
+
+  std::string line = "";
+  while (!filestream.eof()) {
+    std::getline(filestream, line);
+    content.append(line + "\n");
+  }
+
+  filestream.close();
+  return content;
 }
 
-Shader &Shader::operator=(Shader other) {
-  m_id = other.m_id;
-  m_hasVertShader = other.m_hasVertShader;
-  m_hasFragShader = other.m_hasFragShader;
-  m_isLinked = other.m_isLinked;
-  m_vertShaderId = other.m_vertShaderId;
-  m_fragShaderId = other.m_fragShaderId;
-  other.m_toDeleteProgram = false;
-
-  return *this;
+Shader::Shader(const char *vertexFilePath, const char *fragmentFilePath) {
+  m_id = glCreateProgram();
+  addVertexShader(readFile(vertexFilePath).c_str());
+  addFragmentShader(readFile(fragmentFilePath).c_str());
+  linkProgram();
 }
 
 Shader::~Shader() {
-  if (m_toDeleteProgram)
-    glDeleteProgram(m_id);
+  std::cout << "Deleting shader program" << std::endl;
+  glDeleteProgram(m_id);
 }
 
 bool Shader::addVertexShader(const char *vertexData) {

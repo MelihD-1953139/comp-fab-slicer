@@ -3,36 +3,14 @@
 #include <Nexus.h>
 #include <clipper2/clipper.h>
 
+using namespace Clipper2Lib;
+
 void Line::setNextPoint(glm::vec3 point) {
   if (firstPointSet) {
     p2 = point;
   } else {
     p1 = point;
     firstPointSet = true;
-  }
-}
-
-void Line::sort(glm::vec3 referencePoint) {
-  double angle1 =
-      glm::atan(-(p1.z - referencePoint.z), p1.x - referencePoint.x);
-  double angle2 =
-      glm::atan(-(p2.z - referencePoint.z), p2.x - referencePoint.x);
-
-  bool crossingXAxis = (p1.z > referencePoint.z && p2.z < referencePoint.z) ||
-                       (p1.z < referencePoint.z && p2.z > referencePoint.z);
-
-  auto calculateXaxisCrossing = [](glm::vec3 p1, glm::vec3 p2,
-                                   glm::vec3 referencePoint) {
-    return p1.x + (referencePoint.z - p1.z) * (p2.x - p1.x) / (p2.z - p1.z);
-  };
-
-  if (crossingXAxis &&
-      calculateXaxisCrossing(p1, p2, referencePoint) < referencePoint.x) {
-    std::swap(p1, p2);
-    std::swap(angle1, angle2);
-  } else if (angle2 > angle1) {
-    std::swap(p1, p2);
-    std::swap(angle1, angle2);
   }
 }
 
@@ -46,10 +24,11 @@ Contour::Contour(std::vector<glm::vec3> points) : m_points(points) {
   initOpenGLBuffers();
 }
 
-Contour::Contour(Clipper2Lib::PathD path) {
+Contour::Contour(PathD path) {
   for (auto &point : path) {
     m_points.emplace_back(point.x, 0, point.y);
   }
+  m_points.push_back(m_points.front());
   initOpenGLBuffers();
 }
 
@@ -62,8 +41,8 @@ void Contour::draw(Shader &shader, glm::vec3 color) {
   glBindVertexArray(0);
 }
 
-Contour::operator Clipper2Lib::PathD() const {
-  Clipper2Lib::PathD path;
+Contour::operator PathD() const {
+  PathD path;
   for (auto &point : m_points) {
     path.emplace_back(point.x, point.z);
   }
@@ -95,11 +74,13 @@ Slice::Slice(std::vector<Line> lineSegments) {
       lineSegments.erase(lineSegments.begin());
     }
 
+    auto &firstPoint = points.front();
+
     for (int i = 0; i < lineSegments.size(); ++i) {
       auto line = lineSegments[i];
       if (glm::distance(points.back(), line.p1) < EPSILON) {
-        if (glm::distance(points.front(), line.p2) < EPSILON) {
-          points.push_back(points.front());
+        if (glm::distance(firstPoint, line.p2) < EPSILON) {
+          points.push_back(firstPoint);
           m_contours.emplace_back(points);
           points.clear();
           lineSegments.erase(lineSegments.begin() + i);
@@ -107,11 +88,10 @@ Slice::Slice(std::vector<Line> lineSegments) {
           points.push_back(line.p2);
           lineSegments.erase(lineSegments.begin() + i);
         }
-
         break;
       } else if (glm::distance(points.back(), line.p2) < EPSILON) {
-        if (glm::distance(points.front(), line.p1) < EPSILON) {
-          points.push_back(points.front());
+        if (glm::distance(firstPoint, line.p1) < EPSILON) {
+          points.push_back(firstPoint);
           m_contours.emplace_back(points);
           points.clear();
           lineSegments.erase(lineSegments.begin() + i);
@@ -124,22 +104,22 @@ Slice::Slice(std::vector<Line> lineSegments) {
   }
 }
 
-Slice::Slice(const Clipper2Lib::PathsD &paths) {
+Slice::Slice(const PathsD &paths) {
   for (auto &path : paths) {
     m_contours.emplace_back(path);
   }
 }
 
 void Slice::render(Shader &shader, const glm::mat4 view,
-                   const glm::mat4 &projection, glm::vec3 color) {
+                   const glm::mat4 &projection) {
   shader.setMVP(glm::mat4(1.0f), view, projection);
   for (auto &contour : m_contours) {
-    contour.draw(shader, color);
+    contour.draw(shader, GREEN);
   }
 }
 
-Slice::operator Clipper2Lib::PathsD() const {
-  Clipper2Lib::PathsD paths;
+Slice::operator PathsD() const {
+  PathsD paths;
   for (auto &contour : m_contours) {
     paths.emplace_back(contour);
   }

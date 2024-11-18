@@ -8,15 +8,10 @@
 #include "shader.h"
 #include "slice.h"
 
-struct Vertex {
-  glm::vec3 position;
-  glm::vec3 normal;
-};
-
 struct Triangle {
   std::array<glm::vec3, 3> vertices;
 
-  Triangle(Vertex v1, Vertex v2, Vertex v3);
+  Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3);
 
   float getYmin() const;
   float getYmax() const;
@@ -43,7 +38,7 @@ public:
   Slice getSlice(double sliceHeight);
 
 private:
-  std::vector<Vertex> m_vertices;
+  std::vector<glm::vec3> m_vertices;
   std::vector<GLuint> m_indices;
   std::vector<Triangle> m_triangles;
 

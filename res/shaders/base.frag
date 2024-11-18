@@ -1,6 +1,5 @@
 #version 410 core
 
-in vec3 vertexNormal;
 in vec3 FragPos;
 uniform vec3 color;
 

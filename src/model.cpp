@@ -9,8 +9,8 @@
 
 // ======================= Triangle ========================
 
-Triangle::Triangle(Vertex v1, Vertex v2, Vertex v3)
-    : vertices({v1.position, v2.position, v3.position}) {}
+Triangle::Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3)
+    : vertices({v1, v2, v3}) {}
 float Triangle::getYmin() const {
   return std::min({vertices[0].y, vertices[1].y, vertices[2].y});
 }
@@ -110,7 +110,7 @@ void Model::initOpenGLBuffers() {
   glBindVertexArray(m_VAO);
 
   glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-  glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(Vertex),
+  glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(glm::vec3),
                &m_vertices[0], GL_STATIC_DRAW);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_EBO);
@@ -118,14 +118,8 @@ void Model::initOpenGLBuffers() {
                &m_indices[0], GL_STATIC_DRAW);
 
   // Pos
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                        (void *)offsetof(Vertex, position));
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0);
   glEnableVertexAttribArray(0);
-
-  // Normal
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                        (void *)offsetof(Vertex, normal));
-  glEnableVertexAttribArray(1);
 
   glBindVertexArray(0);
 }
@@ -133,25 +127,18 @@ void Model::initOpenGLBuffers() {
 void Model::processVertices(const aiMesh *mesh) {
   m_max = glm::vec3(-std::numeric_limits<float>::max());
   m_min = glm::vec3(std::numeric_limits<float>::max());
+
   for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
-    Vertex vertex;
     glm::vec3 vector;
     vector.x = mesh->mVertices[i].x;
     vector.y = mesh->mVertices[i].y;
     vector.z = mesh->mVertices[i].z;
-    vertex.position = vector;
 
     m_max = glm::max(m_max, vector);
     m_min = glm::min(m_min, vector);
-
-    if (mesh->HasNormals()) {
-      vector.x = mesh->mNormals[i].x;
-      vector.y = mesh->mNormals[i].y;
-      vector.z = mesh->mNormals[i].z;
-      vertex.normal = vector;
-    }
-    m_vertices.push_back(vertex);
+    m_vertices.push_back(vector);
   }
+
   m_center = (m_max + m_min) / 2.0f;
 }
 

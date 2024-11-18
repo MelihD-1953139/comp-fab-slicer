@@ -112,3 +112,5 @@ Temporary Items
 build/
 .cache/
 !res/**/*.obj
+!build/Slicer
+!build/imgui.ini
