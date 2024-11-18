@@ -35,9 +35,62 @@ struct State {
   int sliceIndex;
   char fileBuffer[256];
   int shellCount;
+  float infillDensity;
   std::vector<Slice> slices;
-  std::vector<Clipper2Lib::PathsD> paths; // each slice is a PathsD
+  std::vector<PathsD> infill;
+  std::vector<PathsD> paths; // each slice is a PathsD
 };
+
+PathD generateSparceRectangleInfill(float density, PointD min, PointD max,
+                                    float nozzleThickness) {
+  PathD infill;
+  float x = min.x;
+  float y = min.y;
+  float xLineCount = std::ceil((max.x - min.x) / nozzleThickness);
+  float yLineCount = std::ceil((max.y - min.y) / nozzleThickness);
+  float step = xLineCount / density;
+
+  PointD current = {x + step, y};
+  while (current.x < max.x) {
+    infill.push_back(current);
+    current.y = max.y;
+    infill.push_back(current);
+    current.x += step;
+    infill.push_back(current);
+    current.y = min.y;
+    infill.push_back(current);
+    current.x += step;
+  }
+  current.x = max.x;
+  current.y += step;
+  while (current.y < max.y) {
+    infill.push_back(current);
+    current.x = min.x;
+    infill.push_back(current);
+    current.y += step;
+    infill.push_back(current);
+    current.x = max.x;
+    infill.push_back(current);
+    current.y += step;
+  }
+  return infill;
+}
+
+std::pair<PointD, PointD> getMinMax(PathsD &paths) {
+  PointD min = {std::numeric_limits<double>::max(),
+                std::numeric_limits<double>::max()};
+  PointD max = {std::numeric_limits<double>::min(),
+                std::numeric_limits<double>::min()};
+  for (auto &path : paths) {
+    for (auto &point : path) {
+      min.x = std::min(min.x, point.x);
+      min.y = std::min(min.y, point.y);
+      max.x = std::max(max.x, point.x);
+      max.y = std::max(max.y, point.y);
+    }
+  }
+  return {min, max};
+}
 
 int main(int argc, char *argv[]) {
   Logger::setLevel(LogLevel::Trace);
@@ -70,6 +123,7 @@ int main(int argc, char *argv[]) {
       .sliceIndex = 0,
       .fileBuffer = "",
       .shellCount = 1,
+      .infillDensity = 20.0f,
   };
 
   strcpy(state.fileBuffer, argv[1]);
@@ -151,12 +205,18 @@ int main(int argc, char *argv[]) {
         if (ImGui::InputInt("Shell count", &state.shellCount)) {
           state.shellCount = std::clamp(state.shellCount, 1, 10);
         }
+
+        if (ImGui::InputFloat("Infill Density", &state.infillDensity, 0.0f,
+                              0.0f, "%.2f %%")) {
+          state.infillDensity = std::clamp(state.infillDensity, 0.0f, 100.0f);
+        }
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 
         state.slices.clear();
         state.paths.clear();
+        state.infill.clear();
 
         for (int i = 0; i < state.maxSliceIndex; ++i) {
           auto slice = model.getSlice(state.layerHeight * i + 0.000000001);
@@ -164,18 +224,26 @@ int main(int argc, char *argv[]) {
           perimeter = InflatePaths(perimeter, -printer.getNozzle() / 2.0f,
                                    JoinType::Miter, EndType::Polygon);
 
-          for (int j = 0; j < state.shellCount; ++j) {
+          PathsD lastShell = perimeter;
+          for (int j = 0; j < state.shellCount - 1; ++j) {
             auto shells = InflatePaths(perimeter, -printer.getNozzle() * j,
                                        JoinType::Miter, EndType::Polygon);
             for (auto &shell : shells)
               perimeter.push_back(shell);
-          }
 
+            if (j == state.shellCount - 2)
+              lastShell = shells;
+          }
+          auto [min, max] = getMinMax(lastShell);
+          PathD gridLines = generateSparceRectangleInfill(
+              state.infillDensity, min, max, printer.getNozzle());
+          auto infill = Intersect({gridLines}, lastShell, FillRule::EvenOdd);
           state.paths.push_back(perimeter);
+          state.infill.push_back(infill);
         }
-        // TODO do slicing stuff
-        for (auto &paths : state.paths)
-          state.slices.push_back(paths);
+
+        for (int i = 0; i < state.paths.size(); ++i)
+          state.slices.emplace_back(state.paths[i], state.infill[i]);
       }
       if (ImGui::Button("Export to g-code",
                         ImVec2(ImGui::GetContentRegionAvail().x, 0))) {

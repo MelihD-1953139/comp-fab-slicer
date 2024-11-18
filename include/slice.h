@@ -6,6 +6,8 @@
 #include <glm/gtc/constants.hpp>
 #include <vector>
 
+#include "clipper2/clipper.core.h"
+#include "glm/fwd.hpp"
 #include "shader.h"
 
 using namespace Clipper2Lib;
@@ -26,9 +28,10 @@ private:
 class Contour {
 public:
   Contour(std::vector<glm::vec3> points);
-  Contour(Clipper2Lib::PathD path);
+  Contour(Clipper2Lib::PathD path, bool isClosed = true);
   void draw(Shader &shader, glm::vec3 color);
   const std::vector<glm::vec3> &getPoints() const { return m_points; }
+  std::vector<glm::vec3> getPoints() { return m_points; }
 
   operator PathD() const;
 
@@ -44,7 +47,7 @@ private:
 class Slice {
 public:
   Slice(std::vector<Line> lineSegments);
-  Slice(const Clipper2Lib::PathsD &paths);
+  Slice(const PathsD &paths, const PathsD &infill);
 
   void render(Shader &shader, const glm::mat4 view,
               const glm::mat4 &projection);
@@ -56,4 +59,5 @@ public:
 private:
   const float EPSILON = 0.001;
   std::vector<Contour> m_shells;
+  std::vector<Contour> m_infill;
 };

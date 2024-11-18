@@ -2,6 +2,7 @@
 
 #include <Nexus.h>
 #include <clipper2/clipper.h>
+#include <glm/gtc/matrix_transform.hpp>
 
 using namespace Clipper2Lib;
 
@@ -24,11 +25,12 @@ Contour::Contour(std::vector<glm::vec3> points) : m_points(points) {
   initOpenGLBuffers();
 }
 
-Contour::Contour(PathD path) {
+Contour::Contour(PathD path, bool isClosed) {
   for (auto &point : path) {
     m_points.emplace_back(point.x, 0, point.y);
   }
-  m_points.push_back(m_points.front());
+  if (isClosed)
+    m_points.push_back(m_points.front());
   initOpenGLBuffers();
 }
 
@@ -104,17 +106,25 @@ Slice::Slice(std::vector<Line> lineSegments) {
   }
 }
 
-Slice::Slice(const PathsD &paths) {
+Slice::Slice(const PathsD &paths, const PathsD &infill) {
   for (auto &path : paths) {
     m_shells.emplace_back(path);
+  }
+  for (auto &path : infill) {
+    m_infill.emplace_back(path, false);
   }
 }
 
 void Slice::render(Shader &shader, const glm::mat4 view,
                    const glm::mat4 &projection) {
-  shader.setMVP(glm::mat4(1.0f), view, projection);
+  shader.setMVP(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(10.0f)),
+                               glm::vec3(-100, 0, -100)),
+                view, projection);
   for (auto &contour : m_shells) {
     contour.draw(shader, GREEN);
+  }
+  for (auto &contour : m_infill) {
+    contour.draw(shader, BLUE);
   }
 }
 
