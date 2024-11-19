@@ -7,8 +7,9 @@
 #include <glm/gtx/rotate_vector.hpp>
 
 // Public
-Camera::Camera(float distanceFromTarget)
-    : m_distanceFromTarget(distanceFromTarget) {
+Camera::Camera(float polarAngle, float azimuthalAngle, float distanceFromTarget)
+    : m_distanceFromTarget(distanceFromTarget), m_polarAngle(polarAngle),
+      m_azimuthalAngle(azimuthalAngle) {
   updateCameraVectors();
 }
 
@@ -18,32 +19,29 @@ const glm::mat4 Camera::getViewMatrix(const glm::vec3 &target) const {
 
 void Camera::orbit(glm::vec2 offset) {
   offset = glm::normalize(offset);
-  m_polar_angle += offset.x * m_speed;
-  m_azimuthal_angle += offset.y * m_speed;
+  m_polarAngle += offset.x * m_speed;
+  m_azimuthalAngle += offset.y * m_speed;
   updateCameraVectors();
 }
 
 glm::vec3 Camera::getPosition() const {
-  auto r = m_distanceFromTarget * glm::sin(glm::radians(m_azimuthal_angle));
-  auto x = r * glm::sin(glm::radians(m_polar_angle));
-  auto y = m_distanceFromTarget * glm::cos(glm::radians(m_azimuthal_angle));
-  auto z = r * glm::cos(glm::radians(m_polar_angle));
+  auto r = m_distanceFromTarget * glm::sin(glm::radians(m_azimuthalAngle));
+  auto x = r * glm::sin(glm::radians(m_polarAngle));
+  auto y = m_distanceFromTarget * glm::cos(glm::radians(m_azimuthalAngle));
+  auto z = r * glm::cos(glm::radians(m_polarAngle));
   return {x, y, z};
 }
 
 void Camera::updateCameraVectors() {
   m_up = glm::rotateX(glm::vec3(0.0f, 0.0f, -1.0f),
-                      glm::radians(m_azimuthal_angle));
-  m_up = glm::rotateY(m_up, glm::radians(m_polar_angle));
+                      glm::radians(m_azimuthalAngle));
+  m_up = glm::rotateY(m_up, glm::radians(m_polarAngle));
 }
 
 // ==================== PerspectiveCamera ====================
-PerspectiveCamera::PerspectiveCamera(float start_polar, float start_azimuth,
+PerspectiveCamera::PerspectiveCamera(float polarAngle, float azimuthalAngle,
                                      float distanceFromTarget)
-    : Camera(distanceFromTarget) {
-  m_polar_angle = start_polar;
-  m_azimuthal_angle = start_azimuth;
-}
+    : Camera(polarAngle, azimuthalAngle, distanceFromTarget) {}
 
 const glm::mat4 PerspectiveCamera::getProjectionMatrix(int width,
                                                        int height) const {
@@ -52,12 +50,9 @@ const glm::mat4 PerspectiveCamera::getProjectionMatrix(int width,
 }
 
 // ==================== OrthographicCamera ====================
-OrthographicCamera::OrthographicCamera(float start_polar, float start_azimuth,
+OrthographicCamera::OrthographicCamera(float polarAngle, float azimuthalAngle,
                                        float distanceFromTarget)
-    : Camera(distanceFromTarget) {
-  m_polar_angle = start_polar;
-  m_azimuthal_angle = start_azimuth;
-}
+    : Camera(polarAngle, azimuthalAngle, distanceFromTarget) {}
 
 const glm::mat4 OrthographicCamera::getProjectionMatrix(int width,
                                                         int height) const {

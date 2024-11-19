@@ -30,10 +30,12 @@ public:
   glm::vec3 getMax() const;
   glm::vec3 getCenter() const;
   void setPosition(glm::vec3 position);
-  void setPositionCentered(glm::vec3 centerPosition);
   glm::vec3 getPosition() const;
+  void setRotation(glm::vec3 rotation);
+  const glm::vec3 &getRotation() const;
   void setScale(glm::vec3 scale);
-  float getHeight() const;
+  const glm::vec3 &getScale() const;
+  float getHeight();
 
   Slice getSlice(double sliceHeight);
 
@@ -46,6 +48,7 @@ private:
   glm::vec3 m_max;
   glm::vec3 m_center;
   glm::vec3 m_position;
+  glm::vec3 m_rotation;
   glm::vec3 m_scale;
 
   bool m_hasColor;
@@ -56,4 +59,6 @@ private:
   void processVertices(const aiMesh *mesh);
   void processIndices(const aiMesh *mesh);
   void processTriangles();
+  Triangle transformTriangle(const Triangle &triangle) const;
+  glm::mat4 getModelMatrix() const;
 };

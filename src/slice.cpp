@@ -1,4 +1,5 @@
 #include "slice.h"
+#include "glm/fwd.hpp"
 
 #include <Nexus.h>
 #include <clipper2/clipper.h>
@@ -117,15 +118,13 @@ Slice::Slice(const PathsD &paths, const PathsD &infill) {
 
 void Slice::render(Shader &shader, const glm::mat4 view,
                    const glm::mat4 &projection) {
-  shader.setMVP(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(10.0f)),
-                               glm::vec3(-100, 0, -100)),
-                view, projection);
-  for (auto &contour : m_shells) {
+  shader.setMVP(glm::mat4(1.0f), view, projection);
+
+  for (auto &contour : m_shells)
     contour.draw(shader, GREEN);
-  }
-  for (auto &contour : m_infill) {
+
+  for (auto &contour : m_infill)
     contour.draw(shader, BLUE);
-  }
 }
 
 Slice::operator PathsD() const {

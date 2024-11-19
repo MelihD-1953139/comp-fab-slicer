@@ -1,10 +1,12 @@
 #include "model.h"
+#include "Nexus/Log.h"
 
 #include <Nexus.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
 #include <assimp/Importer.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
 
 // ======================= Triangle ========================
@@ -50,9 +52,7 @@ Model::Model(const char *path) : m_scale(1.0f) {
 void Model::render(Shader &shader, const glm::mat4 &view,
                    const glm::mat4 &projection, const glm::vec3 &color) {
   shader.use();
-  auto modelMatrix = glm::translate(glm::mat4(1.0f), m_position);
-  modelMatrix = glm::scale(modelMatrix, m_scale);
-  shader.setMVP(modelMatrix, view, projection);
+  shader.setMVP(getModelMatrix(), view, projection);
   shader.setVec3("color", color);
 
   glBindVertexArray(m_VAO);
@@ -69,19 +69,32 @@ glm::vec3 Model::getCenter() const { return m_center * m_scale; }
 
 void Model::setPosition(glm::vec3 position) { m_position = position; }
 
-void Model::setPositionCentered(glm::vec3 position) {
-  m_position = position - m_center + glm::vec3(0.0f, getHeight() / 2, 0.0f);
-}
-
 glm::vec3 Model::getPosition() const { return m_position; }
+
+void Model::setRotation(glm::vec3 rotation) { m_rotation = rotation; }
+
+const glm::vec3 &Model::getRotation() const { return m_rotation; }
 
 void Model::setScale(glm::vec3 scale) { m_scale = scale; }
 
-float Model::getHeight() const { return m_max.y - m_min.y; }
+const glm::vec3 &Model::getScale() const { return m_scale; }
+
+float Model::getHeight() {
+  auto model = getModelMatrix();
+  m_max = glm::vec3(-std::numeric_limits<float>::max());
+  m_min = glm::vec3(std::numeric_limits<float>::max());
+  for (auto &vertex : m_vertices) {
+    auto transformed = model * glm::vec4(vertex, 1.0f);
+    m_max = glm::max(m_max, glm::vec3(transformed));
+    m_min = glm::min(m_min, glm::vec3(transformed));
+  }
+  return m_max.y - m_min.y;
+}
 
 Slice Model::getSlice(double sliceHeight) {
   std::vector<Line> lineSegments;
-  for (const auto &triangle : m_triangles) {
+  for (const auto &triangleOrig : m_triangles) {
+    auto triangle = transformTriangle(triangleOrig);
     if (triangle.getYmin() >= sliceHeight || triangle.getYmax() <= sliceHeight)
       continue;
 
@@ -94,7 +107,7 @@ Slice Model::getSlice(double sliceHeight) {
         continue;
 
       float t = (sliceHeight - v1.y) / (v2.y - v1.y);
-      segment.setNextPoint((v1 + t * (v2 - v1)) + m_position);
+      segment.setNextPoint((v1 + t * (v2 - v1)));
     }
     lineSegments.push_back(segment * glm::vec3(1.0f, 0.0f, 1.0f));
   }
@@ -140,6 +153,8 @@ void Model::processVertices(const aiMesh *mesh) {
   }
 
   m_center = (m_max + m_min) / 2.0f;
+  for (auto &vertex : m_vertices)
+    vertex -= m_center;
 }
 
 void Model::processIndices(const aiMesh *mesh) {
@@ -157,4 +172,25 @@ void Model::processTriangles() {
                              m_vertices[m_indices[i + 1]],
                              m_vertices[m_indices[i + 2]]);
   }
+}
+
+glm::mat4 Model::getModelMatrix() const {
+  glm::mat4 model(1.0f);
+  model = glm::translate(model, m_position);
+  model = glm::rotate(model, glm::radians(m_rotation.x),
+                      glm::vec3(1.0f, 0.0f, 0.0f));
+  model = glm::rotate(model, glm::radians(m_rotation.y),
+                      glm::vec3(0.0f, 1.0f, 0.0f));
+  model = glm::rotate(model, glm::radians(m_rotation.z),
+                      glm::vec3(0.0f, 0.0f, 1.0f));
+  model = glm::scale(model, m_scale);
+  return model;
+}
+
+Triangle Model::transformTriangle(const Triangle &triangle) const {
+  glm::mat4 transformation = getModelMatrix();
+  Triangle result(transformation * glm::vec4(triangle.vertices[0], 1.0f),
+                  transformation * glm::vec4(triangle.vertices[1], 1.0f),
+                  transformation * glm::vec4(triangle.vertices[2], 1.0f));
+  return result;
 }

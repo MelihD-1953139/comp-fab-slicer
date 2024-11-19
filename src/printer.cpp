@@ -6,14 +6,16 @@
 Printer::Printer(const char *base, const char *slicePath, glm::ivec3 size,
                  float nozzle)
     : m_base(base), m_slicePlane(slicePath), m_size(size), m_nozzle(nozzle) {
-  m_base.setScale(glm::vec3(m_size));
-  m_slicePlane.setScale(glm::vec3(m_size) * glm::vec3(1.0f, 0.0f, 1.0f));
+  setSize(size);
 }
 
 void Printer::setSize(glm::ivec3 size) {
   m_size = size;
   m_base.setScale(glm::vec3(m_size));
+  auto position = glm::vec3(m_size) * glm::vec3(0.5f, 0.0f, 0.5f);
+  m_base.setPosition(position);
   m_slicePlane.setScale(glm::vec3(m_size) * glm::vec3(1.0f, 0.0f, 1.0f));
+  m_slicePlane.setPosition(position);
 }
 
 glm::ivec3 Printer::getSize() const { return m_size; }
@@ -28,7 +30,8 @@ void Printer::setSliceHeight(float sliceHeight) {
 
 void Printer::render(Shader &shader, const glm::mat4 &view,
                      const glm::mat4 &projection, const glm::vec3 &colorBase,
-                     const glm::vec3 &colorSlice) {
+                     const glm::vec3 &colorSlice, bool showSlicePlane) {
   m_base.render(shader, view, projection, colorBase);
-  m_slicePlane.render(shader, view, projection, colorSlice);
+  if (showSlicePlane)
+    m_slicePlane.render(shader, view, projection, colorSlice);
 }

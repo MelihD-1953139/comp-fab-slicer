@@ -18,7 +18,7 @@ public:
 
   void render(Shader &shader, const glm::mat4 &view,
               const glm::mat4 &projection, const glm::vec3 &colorBase,
-              const glm::vec3 &colorSlice);
+              const glm::vec3 &colorSlice, bool showSlicePlane);
 
 private:
   Model m_base;

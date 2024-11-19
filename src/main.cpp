@@ -33,9 +33,11 @@ struct State {
   float layerHeight;
   int maxSliceIndex;
   int sliceIndex;
+  bool showSlicePlane;
   char fileBuffer[256];
   int shellCount;
   float infillDensity;
+  bool dropDown;
   std::vector<Slice> slices;
   std::vector<PathsD> infill;
   std::vector<PathsD> paths; // each slice is a PathsD
@@ -101,14 +103,15 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  auto window = std::unique_ptr<Window>(Window::create());
+  auto window = std::unique_ptr<Window>(Window::create(WindowProps("Slicer")));
   window->setVSync(true);
 
   Shader shader(SHADER_VERT_PATH, SHADER_FRAG_PATH);
 
   Printer printer("../res/models/plane.obj", "../res/models/plane.obj");
   Model model(argv[1]);
-  model.setPositionCentered(printer.getCenter() * ZEROY);
+  model.setPosition(printer.getCenter() * ZEROY +
+                    glm::vec3(0.0f, model.getHeight() / 2.0f, 0.0f));
 
   PerspectiveCamera camera(0.0f, 45.0f, 300.0f);
   OrthographicCamera topDownCamera(0.0f, 0.0f, printer.getSize().y);
@@ -120,10 +123,12 @@ int main(int argc, char *argv[]) {
       .layerHeight = 0.2f,
       .maxSliceIndex =
           static_cast<int>(std::ceil(model.getHeight() / state.layerHeight)),
-      .sliceIndex = 0,
+      .sliceIndex = 1,
+      .showSlicePlane = false,
       .fileBuffer = "",
       .shellCount = 1,
       .infillDensity = 20.0f,
+      .dropDown = true,
   };
 
   strcpy(state.fileBuffer, argv[1]);
@@ -172,7 +177,7 @@ int main(int argc, char *argv[]) {
                               printer.getSize().z};
         if (ImGui::InputInt3("Printer Size (mm)", printerSize)) {
           printer.setSize({printerSize[0], printerSize[1], printerSize[2]});
-          model.setPositionCentered(printer.getCenter() * ZEROY);
+          model.setPosition(printer.getCenter() * ZEROY);
         }
 
         ImGui::InputFloat("Printer Nozel", printer.getNozzlePtr(), 0.0f, 0.0f,
@@ -184,8 +189,28 @@ int main(int argc, char *argv[]) {
                          IM_ARRAYSIZE(state.fileBuffer));
         if (ImGui::Button("Load")) {
           model = Model(state.fileBuffer);
-          model.setPositionCentered(printer.getCenter() * ZEROY);
+          model.setPosition(printer.getCenter() * ZEROY);
         }
+
+        float position[3] = {model.getPosition().x, model.getPosition().y,
+                             model.getPosition().z};
+        if (ImGui::SliderFloat3(
+                "Position", position, 0,
+                glm::min(printer.getSize().x, printer.getSize().z))) {
+          model.setPosition({position[0], position[1], position[2]});
+        }
+        float scale[3] = {model.getScale().x, model.getScale().y,
+                          model.getScale().z};
+        if (ImGui::SliderFloat3("Scale", scale, 0, 10)) {
+          model.setScale({scale[0], scale[1], scale[2]});
+        }
+        float rotation[3] = {model.getRotation().x, model.getRotation().y,
+                             model.getRotation().z};
+        if (ImGui::SliderFloat3("Rotation", rotation, -180, 180)) {
+          model.setRotation({rotation[0], rotation[1], rotation[2]});
+        }
+
+        ImGui::Checkbox("Drop model down", &state.dropDown);
       }
 
       if (ImGui::CollapsingHeader("Slice settings")) {
@@ -193,6 +218,8 @@ int main(int argc, char *argv[]) {
                              state.maxSliceIndex)) {
           printer.setSliceHeight(state.sliceIndex * state.layerHeight);
         }
+
+        ImGui::Checkbox("Show Slice Plane", &state.showSlicePlane);
 
         if (ImGui::InputFloat("Layer Height", &state.layerHeight, 0.0f, 0.0f,
                               "%.2f mm")) {
@@ -245,6 +272,7 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < state.paths.size(); ++i)
           state.slices.emplace_back(state.paths[i], state.infill[i]);
       }
+
       if (ImGui::Button("Export to g-code",
                         ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         GcodeWriter::NewGcodeFile("output.gcode");
@@ -273,7 +301,11 @@ int main(int argc, char *argv[]) {
           viewBuffer.clear();
 
           printer.render(shader, view, projection, glm::vec3(0.7f, 0.7f, 0.7f),
-                         glm::vec3(0.0f, 0.0f, 1.0f));
+                         glm::vec3(0.0f, 0.0f, 1.0f), state.showSlicePlane);
+          if (state.dropDown) {
+            auto pos = model.getPosition();
+            model.setPosition({pos.x, model.getHeight() / 2, pos.z});
+          }
           model.render(shader, view, projection, glm::vec3(1.0f, 0.0f, 0.0f));
         }
         viewBuffer.unbind();
