@@ -43,13 +43,12 @@ struct State {
   std::vector<PathsD> paths; // each slice is a PathsD
 };
 
-PathD generateSparceRectangleInfill(float density, PointD min, PointD max,
-                                    float nozzleThickness) {
+PathD generateSparceRectangleInfillV(float density, float nozzleThickness,
+                                     PointD min, PointD max) {
   PathD infill;
   float x = min.x;
   float y = min.y;
   float xLineCount = std::ceil((max.x - min.x) / nozzleThickness);
-  float yLineCount = std::ceil((max.y - min.y) / nozzleThickness);
   float step = xLineCount / density;
 
   PointD current = {x + step, y};
@@ -63,15 +62,25 @@ PathD generateSparceRectangleInfill(float density, PointD min, PointD max,
     infill.push_back(current);
     current.x += step;
   }
-  current.x = max.x;
-  current.y += step;
+  return infill;
+}
+
+PathD generateSparceRectangleInfillH(float density, float nozzleThickness,
+                                     PointD min, PointD max) {
+  PathD infill;
+  float x = min.x;
+  float y = min.y;
+  float yLineCount = std::ceil((max.y - min.y) / nozzleThickness);
+  float step = yLineCount / density;
+
+  PointD current = {x, y + step};
   while (current.y < max.y) {
     infill.push_back(current);
-    current.x = min.x;
+    current.x = max.x;
     infill.push_back(current);
     current.y += step;
     infill.push_back(current);
-    current.x = max.x;
+    current.x = min.x;
     infill.push_back(current);
     current.y += step;
   }
@@ -261,10 +270,20 @@ int main(int argc, char *argv[]) {
             if (j == state.shellCount - 2)
               lastShell = shells;
           }
-          auto [min, max] = getMinMax(lastShell);
-          PathD gridLines = generateSparceRectangleInfill(
-              state.infillDensity, min, max, printer.getNozzle());
-          auto infill = Intersect({gridLines}, lastShell, FillRule::EvenOdd);
+
+          auto toIntersect = InflatePaths(lastShell, -printer.getNozzle(),
+                                          JoinType::Miter, EndType::Polygon);
+          auto [min, max] = getMinMax(toIntersect);
+
+          PathD gridLines;
+          if (i % 2 == 0)
+            gridLines = generateSparceRectangleInfillH(
+                state.infillDensity, printer.getNozzle(), min, max);
+          else
+            gridLines = generateSparceRectangleInfillV(
+                state.infillDensity, printer.getNozzle(), min, max);
+
+          auto infill = Intersect({gridLines}, toIntersect, FillRule::EvenOdd);
           state.paths.push_back(perimeter);
           state.infill.push_back(infill);
         }
