@@ -22,133 +22,200 @@
 using namespace Nexus;
 using namespace Clipper2Lib;
 
-void usage(const char *program) {
-  Logger::info("Usage: {} <filename>", program);
+void usage(const char *program)
+{
+    Logger::info("Usage: {} <filename>", program);
 }
 
-struct State {
-  bool slice;
-  bool showDemoWindow;
-  std::pair<int, int> windowSize;
-  float layerHeight;
-  int maxSliceIndex;
-  int sliceIndex;
-  bool showSlicePlane;
-  char fileBuffer[256];
-  int shellCount;
-  float infillDensity;
-  bool dropDown;
-  std::vector<Slice> slices;
-  std::vector<PathsD> infill;
-  std::vector<PathsD> paths; // each slice is a PathsD
+struct State
+{
+    bool slice;
+    bool showDemoWindow;
+    std::pair<int, int> windowSize;
+    float layerHeight;
+    int maxSliceIndex;
+    int sliceIndex;
+    bool showSlicePlane;
+    char fileBuffer[256];
+    int shellCount;
+    float infillDensity;
+    bool dropDown;
+    std::vector<Slice> slices;
+    std::vector<PathsD> infill;
+    std::vector<PathsD> paths; // each slice is a PathsD
+    std::vector<PathsD> perimeters;
+    std::vector<PathsD> shells;
 };
 
 PathD generateSparceRectangleInfillV(float density, float nozzleThickness,
-                                     PointD min, PointD max) {
-  PathD infill;
-  float x = min.x;
-  float y = min.y;
-  float xLineCount = std::ceil((max.x - min.x) / nozzleThickness);
-  float step = xLineCount / density;
+                                     PointD min, PointD max)
+{
+    PathD infill;
+    float x = min.x;
+    float y = min.y;
+    float xLineCount = std::ceil((max.x - min.x) / nozzleThickness);
+    float step = xLineCount / density;
 
-  PointD current = {x + step, y};
-  while (current.x < max.x) {
-    infill.push_back(current);
-    current.y = max.y;
-    infill.push_back(current);
-    current.x += step;
-    infill.push_back(current);
-    current.y = min.y;
-    infill.push_back(current);
-    current.x += step;
-  }
-  return infill;
+    PointD current = {x + step, y};
+    while (current.x < max.x)
+    {
+        infill.push_back(current);
+        current.y = max.y;
+        infill.push_back(current);
+        current.x += step;
+        infill.push_back(current);
+        current.y = min.y;
+        infill.push_back(current);
+        current.x += step;
+    }
+    return infill;
 }
 
 PathD generateSparceRectangleInfillH(float density, float nozzleThickness,
-                                     PointD min, PointD max) {
-  PathD infill;
-  float x = min.x;
-  float y = min.y;
-  float yLineCount = std::ceil((max.y - min.y) / nozzleThickness);
-  float step = yLineCount / density;
+                                     PointD min, PointD max)
+{
+    PathD infill;
+    float x = min.x;
+    float y = min.y;
+    float yLineCount = std::ceil((max.y - min.y) / nozzleThickness);
+    float step = yLineCount / density;
 
-  PointD current = {x, y + step};
-  while (current.y < max.y) {
-    infill.push_back(current);
-    current.x = max.x;
-    infill.push_back(current);
-    current.y += step;
-    infill.push_back(current);
-    current.x = min.x;
-    infill.push_back(current);
-    current.y += step;
-  }
-  return infill;
-}
-
-std::pair<PointD, PointD> getMinMax(PathsD &paths) {
-  PointD min = {std::numeric_limits<double>::max(),
-                std::numeric_limits<double>::max()};
-  PointD max = {std::numeric_limits<double>::min(),
-                std::numeric_limits<double>::min()};
-  for (auto &path : paths) {
-    for (auto &point : path) {
-      min.x = std::min(min.x, point.x);
-      min.y = std::min(min.y, point.y);
-      max.x = std::max(max.x, point.x);
-      max.y = std::max(max.y, point.y);
+    PointD current = {x, y + step};
+    while (current.y < max.y)
+    {
+        infill.push_back(current);
+        current.x = max.x;
+        infill.push_back(current);
+        current.y += step;
+        infill.push_back(current);
+        current.x = min.x;
+        infill.push_back(current);
+        current.y += step;
     }
-  }
-  return {min, max};
+    return infill;
 }
 
-int main(int argc, char *argv[]) {
-  Logger::setLevel(LogLevel::Trace);
+std::vector<PathD> kek(float density, PointD min, PointD max,
+                       float nozzleThickness)
+{
+    float x = min.x;
+    float y = min.y;
+    float xLineCount = std::ceil((max.x - min.x) / nozzleThickness);
+    float step = xLineCount / density;
 
-  if (argc < 2) {
-    Logger::critical("Invalid number of arguments");
-    usage(argv[0]);
-    return 1;
-  }
+    PointD start = {x, y};
+    std::vector<PathD> infillLines;
+    // Loop to create vertical lines
+    while (start.x <= max.x)
+    {
+        PathD line;            // Create a new path for each vertical line
+        line.push_back(start); // Bottom point
 
-  auto window = std::unique_ptr<Window>(Window::create(WindowProps("Slicer")));
-  window->setVSync(true);
+        start.y = max.y;
+        line.push_back(start); // Top point
 
-  Shader shader(SHADER_VERT_PATH, SHADER_FRAG_PATH);
+        infillLines.push_back(line); // Add to the list of lines
 
-  Printer printer("../res/models/plane.obj", "../res/models/plane.obj");
-  Model model(argv[1]);
-  model.setPosition(printer.getCenter() * ZEROY +
-                    glm::vec3(0.0f, model.getHeight() / 2.0f, 0.0f));
+        start.x += step; // Move to the next vertical line
+    }
+    return infillLines;
+}
 
-  PerspectiveCamera camera(0.0f, 45.0f, 300.0f);
-  OrthographicCamera topDownCamera(0.0f, 0.0f, printer.getSize().y);
+PathsD kek2(float density, PointD min, PointD max,
+            float nozzleThickness)
+{
+    float x = min.x;
+    float y = min.y;
+    float xLineCount = std::ceil((max.x - min.x) / nozzleThickness);
+    float step = xLineCount / density;
 
-  State state{
-      .slice = false,
-      .showDemoWindow = false,
-      .windowSize{1280, 720},
-      .layerHeight = 0.2f,
-      .maxSliceIndex =
-          static_cast<int>(std::ceil(model.getHeight() / state.layerHeight)),
-      .sliceIndex = 1,
-      .showSlicePlane = false,
-      .fileBuffer = "",
-      .shellCount = 1,
-      .infillDensity = 20.0f,
-      .dropDown = true,
-  };
+    PointD start = {x, y};
+    PathsD infillLines;
+    // Loop to create vertical lines
+    while (start.x <= max.x)
+    {
+        PathD line; // Create a new path for each vertical line
+        start.y = min.y;
+        line.push_back(start); // Bottom point
 
-  strcpy(state.fileBuffer, argv[1]);
-  printer.setSliceHeight(state.layerHeight * state.sliceIndex);
+        start.y = max.y;
+        line.push_back(start); // Top point
 
-  Framebuffer viewBuffer(state.windowSize.first, state.windowSize.second);
-  Framebuffer sliceBuffer(printer.getSize().x, printer.getSize().z);
+        infillLines.push_back(line); // Add to the list of lines
 
-  // Callbacks
-  window
-      ->onKey([&](int key, int scancode, int action, int mods) -> bool {
+        start.x += step; // Move to the next vertical line
+    }
+    return infillLines;
+}
+
+std::pair<PointD, PointD> getMinMax(PathsD &paths)
+{
+    PointD min = {std::numeric_limits<double>::max(),
+                  std::numeric_limits<double>::max()};
+    PointD max = {std::numeric_limits<double>::min(),
+                  std::numeric_limits<double>::min()};
+    for (auto &path : paths)
+    {
+        for (auto &point : path)
+        {
+            min.x = std::min(min.x, point.x);
+            min.y = std::min(min.y, point.y);
+            max.x = std::max(max.x, point.x);
+            max.y = std::max(max.y, point.y);
+        }
+    }
+    return {min, max};
+}
+
+int main(int argc, char *argv[])
+{
+    Logger::setLevel(LogLevel::Trace);
+
+    if (argc < 2)
+    {
+        Logger::critical("Invalid number of arguments");
+        usage(argv[0]);
+        return 1;
+    }
+
+    auto window = std::unique_ptr<Window>(Window::create(WindowProps("Slicer")));
+    window->setVSync(true);
+
+    Shader shader(SHADER_VERT_PATH, SHADER_FRAG_PATH);
+
+    Printer printer("../res/models/plane.obj", "../res/models/plane.obj");
+    Model model(argv[1]);
+    model.setPosition(printer.getCenter() * ZEROY +
+                      glm::vec3(0.0f, model.getHeight() / 2.0f, 0.0f));
+
+    PerspectiveCamera camera(0.0f, 45.0f, 300.0f);
+    OrthographicCamera topDownCamera(0.0f, 0.0f, printer.getSize().y);
+
+    State state{
+        .slice = false,
+        .showDemoWindow = false,
+        .windowSize{1280, 720},
+        .layerHeight = 0.2f,
+        .maxSliceIndex =
+            static_cast<int>(std::ceil(model.getHeight() / state.layerHeight)),
+        .sliceIndex = 1,
+        .showSlicePlane = false,
+        .fileBuffer = "",
+        .shellCount = 1,
+        .infillDensity = 20.0f,
+        .dropDown = true,
+    };
+
+    strcpy(state.fileBuffer, argv[1]);
+    printer.setSliceHeight(state.layerHeight * state.sliceIndex);
+
+    Framebuffer viewBuffer(state.windowSize.first, state.windowSize.second);
+    Framebuffer sliceBuffer(printer.getSize().x, printer.getSize().z);
+
+    // Callbacks
+    window
+        ->onKey([&](int key, int scancode, int action, int mods) -> bool
+                {
         if (key == GLFW_KEY_W && action != GLFW_RELEASE)
           camera.orbit(0.0f, -1.0f);
         if (key == GLFW_KEY_S && action != GLFW_RELEASE)
@@ -164,16 +231,16 @@ int main(int argc, char *argv[]) {
           camera.offsetDistanceFromTarget(-5.0f);
         if (key == GLFW_KEY_DOWN && action != GLFW_RELEASE)
           camera.offsetDistanceFromTarget(5.0f);
-        return false;
-      })
-      ->onResize([&](int width, int height) -> bool {
+        return false; })
+        ->onResize([&](int width, int height) -> bool
+                   {
         state.windowSize = {width, height};
         state.slice = true;
-        return false;
-      });
+        return false; });
 
-  // Main loop
-  window->whileOpen([&]() {
+    // Main loop
+    window->whileOpen([&]()
+                      {
     ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
 
     if (state.showDemoWindow)
@@ -253,6 +320,8 @@ int main(int argc, char *argv[]) {
         state.slices.clear();
         state.paths.clear();
         state.infill.clear();
+        state.shells.clear();
+        state.perimeters.clear();
 
         for (int i = 0; i < state.maxSliceIndex; ++i) {
           auto slice = model.getSlice(state.layerHeight * i + 0.000000001);
@@ -261,11 +330,12 @@ int main(int argc, char *argv[]) {
                                    JoinType::Miter, EndType::Polygon);
 
           PathsD lastShell = perimeter;
+          PathsD shells_pathds;
           for (int j = 0; j < state.shellCount - 1; ++j) {
             auto shells = InflatePaths(perimeter, -printer.getNozzle() * j,
                                        JoinType::Miter, EndType::Polygon);
             for (auto &shell : shells)
-              perimeter.push_back(shell);
+              shells_pathds.push_back(shell);
 
             if (j == state.shellCount - 2)
               lastShell = shells;
@@ -284,12 +354,14 @@ int main(int argc, char *argv[]) {
                 state.infillDensity, printer.getNozzle(), min, max);
 
           auto infill = Intersect({gridLines}, toIntersect, FillRule::EvenOdd);
-          state.paths.push_back(perimeter);
+        //   state.paths.push_back(perimeter);
+          state.shells.push_back(shells_pathds);
+          state.perimeters.push_back(perimeter);
           state.infill.push_back(infill);
-        }
 
-        for (int i = 0; i < state.paths.size(); ++i)
-          state.slices.emplace_back(state.paths[i], state.infill[i]);
+          state.slices.emplace_back(state.shells[i], state.infill[i], state.perimeters[i]);
+
+        }
       }
 
       if (ImGui::Button("Export to g-code",
@@ -359,6 +431,5 @@ int main(int argc, char *argv[]) {
       }
       ImGui::End();
     }
-    ImGui::PopStyleVar();
-  });
+    ImGui::PopStyleVar(); });
 }
