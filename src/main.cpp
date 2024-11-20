@@ -117,6 +117,47 @@ PathsD generateVerticalOnlyWithoutConnecting(float density, float nozzleThicknes
     }
     return infillLines;
 }
+PathD generateHorRectangle(float density, float nozzleThickness, PointD min, PointD max)
+{
+    PathD infill;
+    float x = min.x;
+    float y = min.y;
+    float yLineCount = std::ceil((max.y - min.y) / nozzleThickness);
+    float step = yLineCount / density;
+
+    PointD current = {x, y};
+    infill.push_back(current);
+    current.x = max.x;
+    infill.push_back(current);
+    current.y += step;
+    infill.push_back(current);
+    current.x = min.x;
+    infill.push_back(current);
+    current = {x, y};
+    infill.push_back(current);
+    return infill;
+}
+PathD generateVerRectangle(float density, float nozzleThickness, PointD min, PointD max)
+{
+    PathD infill;
+    float x = min.x;
+    float y = min.y;
+    float yLineCount = std::ceil((max.y - min.y) / nozzleThickness);
+    float step = yLineCount / density;
+
+    PointD current = {x, y};
+
+    infill.push_back(current);
+    current.y = max.y;
+    infill.push_back(current);
+    current.x += step;
+    infill.push_back(current);
+    current.y = min.y;
+    infill.push_back(current);
+    current = {x, y};
+    infill.push_back(current);
+    return infill;
+}
 
 std::pair<PointD, PointD> getMinMax(PathsD &paths)
 {
@@ -362,8 +403,13 @@ int main(int argc, char *argv[])
           }
           state.shells.push_back(shells_pathds);
           state.perimeters.push_back(perimeter);
-          state.infill.push_back(infill);
 
+        //   // Test with 2 rectangles
+        //   PathD horizontalRectangle = generateHorRectangle(state.infillDensity, printer.getNozzle(), min, max);
+        //   PathD verticalRectangle = generateVerRectangle(state.infillDensity, printer.getNozzle(), min, max);
+        //   auto intersectOfLeftCornerShouldBeSquare = Intersect({horizontalRectangle}, {verticalRectangle}, FillRule::EvenOdd);
+        //   state.infill.push_back({intersectOfLeftCornerShouldBeSquare});
+          state.infill.push_back(infill);
           state.slices.emplace_back(state.shells[i], state.infill[i], state.perimeters[i]);
 
         }
