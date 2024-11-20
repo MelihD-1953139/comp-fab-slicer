@@ -30,7 +30,7 @@ void GcodeWriter::WriteHeader()
 void GcodeWriter::WriteSlice(const Slice &slice, float layerHeight,
                              float nozzle)
 {
-    // // Write shells
+    // Write shells
     m_file << "; Writing shells\n";
     for (const Contour &shell : slice.getShells())
     {
@@ -70,23 +70,24 @@ void GcodeWriter::WriteSlice(const Slice &slice, float layerHeight,
     }
 
     // Write perimeter
-    // m_file << "; Writing perimeter\n";
-    // for (const Contour &perimeter : slice.getPerimeters())
-    // {
-    //     auto points = perimeter.getPoints();
-    //     if (points.empty())
-    //         continue;
+    m_file << "; Writing perimeter\n";
+    for (const Contour &perimeter : slice.getPerimeters())
+    {
+        auto points = perimeter.getPoints();
+        if (points.empty())
+            continue;
 
-    //     m_file << "G0 X" << points[0].x << " Y" << points[0].z << " Z" << layerHeight << "\n";
+        m_file << "G0 X" << points[0].x << " Y" << points[0].z << " Z" << layerHeight << "\n";
 
-    //     for (size_t i = 1; i < points.size(); i++)
-    //     {
-    //         float extrusion = layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
-    //         m_file << "G1 X" << points[i].x << " Y" << points[i].z << " E" << extrusion << "\n";
-    //     }
+        for (size_t i = 1; i < points.size(); i++)
+        {
+            float extrusion = layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
+            m_file << "G1 X" << points[i].x << " Y" << points[i].z << " E" << extrusion << "\n";
+        }
 
-    //     m_file << "G1 X" << points[0].x << " Y" << points[0].z << "\n";
-    // }
+        // Aanzetten als men terugwilt naar beginpunt.
+        // m_file << "G1 X" << points[0].x << " Y" << points[0].z << "\n";
+    }
 }
 
 void GcodeWriter::WriteFooter()

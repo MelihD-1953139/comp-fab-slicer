@@ -42,7 +42,6 @@ struct State
     bool dropDown;
     std::vector<Slice> slices;
     std::vector<PathsD> infill;
-    std::vector<PathsD> paths; // each slice is a PathsD
     std::vector<PathsD> perimeters;
     std::vector<PathsD> shells;
 };
@@ -51,13 +50,11 @@ PathD generateSparceRectangleInfillV(float density, float nozzleThickness,
                                      PointD min, PointD max)
 {
     PathD infill;
-    float x = min.x;
-    float y = min.y;
     float xLineCount = std::ceil((max.x - min.x) / nozzleThickness);
     float step = xLineCount / density;
 
-    PointD current = {x + step, y};
-    while (current.x < max.x)
+    PointD current = {min.x + step, min.y};
+    while (current.x <= max.x)
     {
         infill.push_back(current);
         current.y = max.y;
@@ -95,34 +92,7 @@ PathD generateSparceRectangleInfillH(float density, float nozzleThickness,
     return infill;
 }
 
-std::vector<PathD> kek(float density, PointD min, PointD max,
-                       float nozzleThickness)
-{
-    float x = min.x;
-    float y = min.y;
-    float xLineCount = std::ceil((max.x - min.x) / nozzleThickness);
-    float step = xLineCount / density;
-
-    PointD start = {x, y};
-    std::vector<PathD> infillLines;
-    // Loop to create vertical lines
-    while (start.x <= max.x)
-    {
-        PathD line;            // Create a new path for each vertical line
-        line.push_back(start); // Bottom point
-
-        start.y = max.y;
-        line.push_back(start); // Top point
-
-        infillLines.push_back(line); // Add to the list of lines
-
-        start.x += step; // Move to the next vertical line
-    }
-    return infillLines;
-}
-
-PathsD kek2(float density, PointD min, PointD max,
-            float nozzleThickness)
+PathsD generateVerticalOnlyWithoutConnecting(float density, float nozzleThickness, PointD min, PointD max)
 {
     float x = min.x;
     float y = min.y;
@@ -318,7 +288,6 @@ int main(int argc, char *argv[])
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 
         state.slices.clear();
-        state.paths.clear();
         state.infill.clear();
         state.shells.clear();
         state.perimeters.clear();
@@ -352,12 +321,48 @@ int main(int argc, char *argv[])
           else
             gridLines = generateSparceRectangleInfillV(
                 state.infillDensity, printer.getNozzle(), min, max);
+          
 
-          auto infill = Intersect({gridLines}, toIntersect, FillRule::EvenOdd);
-        //   state.paths.push_back(perimeter);
+
+
+
+            if( i == 1 ){
+            for (int j = 0; j < gridLines.size(); j++)
+            {
+                std::cout << gridLines[j] << std::endl;
+            }
+            std::cout << "end of gridlines" << std::endl;
+          }
+          
+          PathsD gridlinesMelih = generateVerticalOnlyWithoutConnecting(state.infillDensity, printer.getNozzle(), min, max);
+          if( i == 1 ){
+            for (int j = 0; j < gridlinesMelih.size(); j++)
+            {
+                std::cout << gridlinesMelih[j] << std::endl;
+            }
+          }
+        if( i == 1 ){
+            for (int j = 0; j < toIntersect.size(); j++)
+            {
+                std::cout << toIntersect[j] << std::endl;
+            }
+            std::cout << "end of toIntersect" << std::endl;
+          }
+
+
+
+
+          auto infill = Intersect(gridlinesMelih, toIntersect, FillRule::EvenOdd);
+          if( i == 1 ){
+            for (int j = 0; j < infill.size(); j++)
+            {
+                std::cout << infill[j] << std::endl;
+            }
+            std::cout << "end of infill" << std::endl;
+          }
           state.shells.push_back(shells_pathds);
           state.perimeters.push_back(perimeter);
-          state.infill.push_back(infill);
+          state.infill.push_back(gridlinesMelih);
 
           state.slices.emplace_back(state.shells[i], state.infill[i], state.perimeters[i]);
 
@@ -368,8 +373,11 @@ int main(int argc, char *argv[])
                         ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         GcodeWriter::NewGcodeFile("output.gcode");
         GcodeWriter::WriteHeader();
-        GcodeWriter::WriteSlice(state.slices.back(), state.layerHeight,
+        for( int i = 0; i < state.slices.size(); i++){
+            GcodeWriter::WriteSlice(state.slices[i], state.layerHeight * i,
                                 printer.getNozzle());
+        }
+        
         GcodeWriter::WriteFooter();
         GcodeWriter::CloseGcodeFile();
       }
