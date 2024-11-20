@@ -334,13 +334,13 @@ int main(int argc, char *argv[])
             std::cout << "end of gridlines" << std::endl;
           }
           
-          PathsD gridlinesMelih = generateVerticalOnlyWithoutConnecting(state.infillDensity, printer.getNozzle(), min, max);
-          if( i == 1 ){
-            for (int j = 0; j < gridlinesMelih.size(); j++)
-            {
-                std::cout << gridlinesMelih[j] << std::endl;
-            }
-          }
+        //   PathsD gridlinesMelih = generateVerticalOnlyWithoutConnecting(state.infillDensity, printer.getNozzle(), min, max);
+        //   if( i == 1 ){
+        //     for (int j = 0; j < gridlinesMelih.size(); j++)
+        //     {
+        //         std::cout << gridlinesMelih[j] << std::endl;
+        //     }
+        //   }
         if( i == 1 ){
             for (int j = 0; j < toIntersect.size(); j++)
             {
@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
 
 
 
-          auto infill = Intersect(gridlinesMelih, toIntersect, FillRule::EvenOdd);
+          auto infill = Intersect({gridLines}, toIntersect, FillRule::EvenOdd);
           if( i == 1 ){
             for (int j = 0; j < infill.size(); j++)
             {
@@ -362,7 +362,7 @@ int main(int argc, char *argv[])
           }
           state.shells.push_back(shells_pathds);
           state.perimeters.push_back(perimeter);
-          state.infill.push_back(gridlinesMelih);
+          state.infill.push_back(infill);
 
           state.slices.emplace_back(state.shells[i], state.infill[i], state.perimeters[i]);
 
