@@ -6,14 +6,14 @@ std::ofstream GcodeWriter::m_file;
 
 void GcodeWriter::NewGcodeFile(const char *filename) { m_file.open(filename); }
 
-void GcodeWriter::WriteHeader()
+void GcodeWriter::WriteHeader(float &extrusion)
 {
     m_file << "M140 S60\n";
     m_file << "M190 S60\n";
     m_file << "M104 S200\n";
     m_file << "M109 S200\n";
     m_file << "G21 ;set units to millimeters\n";
-    m_file << "M83 ;set extruder to absolute mode\n";
+    m_file << "M82 ;set extruder to absolute mode\n";
     m_file << "G28 ;home all axes\n";
     m_file << "G92 E0 ;zero the extruder\n";
     m_file << "G1 Z2.0 F3000\n";
@@ -30,10 +30,13 @@ void GcodeWriter::WriteHeader()
 }
 
 void GcodeWriter::WriteSlice(const Slice &slice, float layerHeight,
-                             float nozzle)
+                             float nozzle, float &extrusion, bool firstSlice)
 {
     // Write shells
     m_file << "; Writing shells\n";
+    if (firstSlice) {
+        m_file << "G92 E0 ;zero the extruder\n";
+    }
     for (const Contour &shell : slice.getShells())
     {
         auto points = shell.getPoints();
@@ -41,10 +44,9 @@ void GcodeWriter::WriteSlice(const Slice &slice, float layerHeight,
             continue;
 
         m_file << "G0 X" << points[0].x << " Y" << points[0].z << " Z" << layerHeight << "\n";
-        float extrusion;
         for (size_t i = 1; i < points.size(); i++)
         {
-            float extrusion = layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
+            extrusion += layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
             m_file << "G1 X" << points[i].x << " Y" << points[i].z << " E" << extrusion << "\n";
         }
         // Aanzetten als men terugwilt naar beginpunt.
@@ -63,7 +65,7 @@ void GcodeWriter::WriteSlice(const Slice &slice, float layerHeight,
 
     //     for (size_t i = 1; i < points.size(); i++)
     //     {
-    //         float extrusion = layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
+    //         extrusion += layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
     //         m_file << "G1 X" << points[i].x << " Y" << points[i].z << " E" << extrusion << "\n";
     //     }
 
@@ -71,28 +73,28 @@ void GcodeWriter::WriteSlice(const Slice &slice, float layerHeight,
     //     // m_file << "G1 X" << points[0].x << " Y" << points[0].z << "\n";
     // }
 
-    // // Write perimeter
-    // m_file << "; Writing perimeter\n";
-    // for (const Contour &perimeter : slice.getPerimeters())
-    // {
-    //     auto points = perimeter.getPoints();
-    //     if (points.empty())
-    //         continue;
+    // Write perimeter
+    m_file << "; Writing perimeter\n";
+    for (const Contour &perimeter : slice.getPerimeters())
+    {
+        auto points = perimeter.getPoints();
+        if (points.empty())
+            continue;
 
-    //     m_file << "G0 X" << points[0].x << " Y" << points[0].z << " Z" << layerHeight << "\n";
+        m_file << "G0 X" << points[0].x << " Y" << points[0].z << " Z" << layerHeight << "\n";
 
-    //     for (size_t i = 1; i < points.size(); i++)
-    //     {
-    //         float extrusion = layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
-    //         m_file << "G1 X" << points[i].x << " Y" << points[i].z << " E" << extrusion << "\n";
-    //     }
+        for (size_t i = 1; i < points.size(); i++)
+        {
+            extrusion += layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
+            m_file << "G1 X" << points[i].x << " Y" << points[i].z << " E" << extrusion << "\n";
+        }
 
-    //     // Aanzetten als men terugwilt naar beginpunt.
-    //     // m_file << "G1 X" << points[0].x << " Y" << points[0].z << "\n";
-    // }
+        // Aanzetten als men terugwilt naar beginpunt.
+        // m_file << "G1 X" << points[0].x << " Y" << points[0].z << "\n";
+    }
 }
 
-void GcodeWriter::WriteFooter()
+void GcodeWriter::WriteFooter(float &extrusion)
 {
     m_file << "G1 F1800 E-3 ; retract filament\n";
     m_file << "G1 F3000 Z20 ; lift nozzle\n";
@@ -106,6 +108,8 @@ void GcodeWriter::WriteFooter()
     m_file << "G90 ; set to absolute positioning\n";
     m_file << "M84 ; disable motors\n";
     m_file << "M82 ; set extruder to absolute mode\n";
+
+    extrusion = 0;
 }
 
 void GcodeWriter::CloseGcodeFile() { m_file.close(); }

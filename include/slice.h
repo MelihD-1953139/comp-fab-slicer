@@ -15,6 +15,8 @@ using namespace Clipper2Lib;
 #define GREEN glm::vec3(0.0f, 1.0f, 0.0f)
 #define YELLOW glm::vec3(1.0f, 1.0f, 0.0f)
 #define BLUE glm::vec3(0.0f, 0.0f, 1.0f)
+#define RED glm::vec3(1.0f, 0.0f, 0.0f)
+#define ORANGE glm::vec3(1.0f, 0.65f, 0.0f)
 
 struct Line
 {

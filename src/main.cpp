@@ -38,9 +38,7 @@ struct State {
   int shellCount;
   float infillDensity;
   bool dropDown;
-  int endTemperature;
-  int bedTemperature;
-  float retractDistance;
+  float extrusion;
   std::vector<Slice> slices;
   std::vector<PathsD> infill;
   std::vector<PathsD> perimeters;
@@ -207,8 +205,7 @@ int main(int argc, char *argv[]) {
       .shellCount = 1,
       .infillDensity = 20.0f,
       .dropDown = true,
-      .endTemperature = 200,
-      .bedTemperature = 60,
+      .extrusion = 0.0f,
   };
 
   strcpy(state.fileBuffer, argv[1]);
@@ -262,9 +259,6 @@ int main(int argc, char *argv[]) {
 
         ImGui::InputFloat("Printer Nozel", printer.getNozzlePtr(), 0.0f, 0.0f,
                           "%.2f mm");
-
-        ImGui::InputInt("End Temperature", &state.endTemperature);
-        ImGui::InputInt("Bed Temperature", &state.bedTemperature);
       }
 
       if (ImGui::CollapsingHeader("Object settings")) {
@@ -320,9 +314,6 @@ int main(int argc, char *argv[]) {
                               0.0f, "%.2f %%")) {
           state.infillDensity = std::clamp(state.infillDensity, 0.0f, 100.0f);
         }
-
-        ImGui::InputFloat("Retract Distance", &state.retractDistance, 0.0f,
-                          0.0f, "%.2f mm");
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
@@ -402,6 +393,9 @@ int main(int argc, char *argv[]) {
           auto intersectOfLeftCornerShouldBeSquare = Intersect(
               {horizontalRectangle}, {verticalRectangle}, FillRule::EvenOdd);
           // state.infill.push_back({intersectOfLeftCornerShouldBeSquare});
+          //   ClipperD cp = ClipperD();
+          //   cp.AddPath({verticalRectangle});
+
           state.infill.push_back(infill);
           state.slices.emplace_back(state.shells[i], state.infill[i],
                                     state.perimeters[i]);
@@ -411,14 +405,15 @@ int main(int argc, char *argv[]) {
       if (ImGui::Button("Export to g-code",
                         ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         GcodeWriter::NewGcodeFile("output.gcode");
-        GcodeWriter::WriteHeader();
+        GcodeWriter::WriteHeader(state.extrusion);
         for (int i = 0; i < state.slices.size(); i++) {
           GcodeWriter::WriteSlice(state.slices[i],
                                   state.layerHeight * i + state.layerHeight,
-                                  printer.getNozzle());
+                                  printer.getNozzle(), state.extrusion, i == 0);
+          // break;
         }
 
-        GcodeWriter::WriteFooter();
+        GcodeWriter::WriteFooter(state.extrusion);
         GcodeWriter::CloseGcodeFile();
       }
     }

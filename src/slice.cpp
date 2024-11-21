@@ -155,11 +155,13 @@ void Slice::render(Shader &shader, const glm::mat4 view,
     shader.setMVP(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(10.0f)),
                                  glm::vec3(-100, 0, -100)),
                   view, projection);
+    for (auto &contour : m_perimeters)
+        contour.draw(shader, RED);
     for (auto &contour : m_shells)
         contour.draw(shader, GREEN);
 
     for (auto &contour : m_infill)
-        contour.draw(shader, BLUE);
+        contour.draw(shader, ORANGE);
 }
 
 Slice::operator PathsD() const
