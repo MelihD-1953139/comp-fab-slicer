@@ -29,6 +29,7 @@ private:
   static std::ofstream m_file;
   static float extrusion;
   static float layerHeight;
+  static float layerThickness;
   static float nozzle;
   static int bedTemp;
   static int nozzleTemp;

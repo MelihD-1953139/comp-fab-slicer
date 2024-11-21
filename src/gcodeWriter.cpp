@@ -3,6 +3,7 @@
 std::ofstream GcodeWriter::m_file;
 float GcodeWriter::extrusion;
 float GcodeWriter::layerHeight;
+float GcodeWriter::layerThickness;
 float GcodeWriter::nozzle;
 int GcodeWriter::bedTemp;
 int GcodeWriter::nozzleTemp;
@@ -14,11 +15,13 @@ void GcodeWriter::WriteGcode(const std::vector<Slice> &slices,
   GcodeWriter::nozzle = settings.nozzle;
   GcodeWriter::bedTemp = settings.bedTemp;
   GcodeWriter::nozzleTemp = settings.nozzleTemp;
+  GcodeWriter::layerThickness = settings.layerHeight;
 
   NewGcodeFile(settings.outFilePath);
   WriteHeader();
   m_file << "M107 ;turn off fan\n";
   for (int i = 0; i < slices.size(); i++) {
+    m_file << "; Layer " << i << "\n";
     layerHeight = settings.layerHeight * (i + 1);
     if (i == 2)
       m_file << "M106 S255 ;turn on fan\n";
@@ -47,6 +50,7 @@ void GcodeWriter::WriteHeader() {
   m_file << "G92 E0 ;zero the extruder\n";
   m_file
       << "G1 Z2.0 F3000 ;move Z up little to prevent scratching of Heat Bed\n";
+  m_file << "G1 X5 Y20 Z0.3 F5000.0 ; Move over to prevent blob squish\n";
   m_file << "G92 E0 ;zero the extruder\n";
   m_file << "G1 F2700 E-5\n";
 }
@@ -60,7 +64,7 @@ void GcodeWriter::WritePath(const Contour &contour) {
          << layerHeight << "\n";
   for (size_t i = 1; i < points.size(); i++) {
     extrusion +=
-        layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / fa;
+        layerThickness * nozzle * glm::distance(points[i - 1], points[i]) / fa;
     m_file << "G1 F1200 X" << points[i].x << " Y" << points[i].z << " E"
            << extrusion << "\n";
   }
