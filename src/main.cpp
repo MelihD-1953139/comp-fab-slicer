@@ -1,6 +1,7 @@
 #include "Nexus/Log.h"
 #include "clipper2/clipper.core.h"
 #include "clipper2/clipper.offset.h"
+#include <cstdint>
 #define ZEROY glm::vec3(1.0f, 0.0f, 1.0f)
 
 #include "camera.h"
@@ -39,6 +40,8 @@ struct State {
   float infillDensity;
   bool dropDown;
   float extrusion;
+  int bedTemp;
+  int nozzleTemp;
   std::vector<Slice> slices;
   std::vector<PathsD> infill;
   std::vector<PathsD> perimeters;
@@ -206,6 +209,8 @@ int main(int argc, char *argv[]) {
       .infillDensity = 20.0f,
       .dropDown = true,
       .extrusion = 0.0f,
+      .bedTemp = 50,
+      .nozzleTemp = 200,
   };
 
   strcpy(state.fileBuffer, argv[1]);
@@ -259,6 +264,9 @@ int main(int argc, char *argv[]) {
 
         ImGui::InputFloat("Printer Nozel", printer.getNozzlePtr(), 0.0f, 0.0f,
                           "%.2f mm");
+
+        ImGui::InputInt("Bed Temp", &state.bedTemp);
+        ImGui::InputInt("Nozzle Temp", &state.nozzleTemp);
       }
 
       if (ImGui::CollapsingHeader("Object settings")) {
@@ -319,30 +327,24 @@ int main(int argc, char *argv[]) {
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 
         state.slices.clear();
-        state.infill.clear();
-        state.shells.clear();
-        state.perimeters.clear();
 
-        for (int i = 0; i < state.maxSliceIndex; ++i) {
+        for (int i = 1; i < state.maxSliceIndex; ++i) {
           auto slice = model.getSlice(state.layerHeight * i + 0.000000001);
           auto perimeter = Union(slice, FillRule::EvenOdd);
           perimeter = InflatePaths(perimeter, -printer.getNozzle() / 2.0f,
                                    JoinType::Miter, EndType::Polygon);
 
-          PathsD lastShell = perimeter;
-          PathsD shells_pathds;
-          for (int j = 0; j < state.shellCount - 1; ++j) {
-            auto shells = InflatePaths(perimeter, -printer.getNozzle() * j,
-                                       JoinType::Miter, EndType::Polygon);
-            for (auto &shell : shells)
-              shells_pathds.push_back(shell);
-
-            if (j == state.shellCount - 2)
-              lastShell = shells;
+          PathsD shells;
+          PathsD lastShell;
+          for (int j = 1; j < state.shellCount; ++j) {
+            lastShell = InflatePaths(perimeter, -printer.getNozzle() * j,
+                                     JoinType::Miter, EndType::Polygon);
+            shells.append_range(lastShell);
           }
 
-          auto toIntersect = InflatePaths(lastShell, -printer.getNozzle(),
-                                          JoinType::Miter, EndType::Polygon);
+          auto toIntersect = InflatePaths(
+              shells.empty() ? perimeter : lastShell, -printer.getNozzle(),
+              JoinType::Miter, EndType::Polygon);
           auto [min, max] = getMinMax(toIntersect);
 
           PathD gridLines;
@@ -353,68 +355,21 @@ int main(int argc, char *argv[]) {
             gridLines = generateSparceRectangleInfillV(
                 state.infillDensity, printer.getNozzle(), min, max);
 
-          if (i == 1) {
-            for (int j = 0; j < gridLines.size(); j++) {
-              std::cout << gridLines[j] << std::endl;
-            }
-            std::cout << "end of gridlines" << std::endl;
-          }
-
-          //   PathsD gridlinesMelih =
-          //   generateVerticalOnlyWithoutConnecting(state.infillDensity,
-          //   printer.getNozzle(), min, max); if( i == 1 ){
-          //     for (int j = 0; j < gridlinesMelih.size(); j++)
-          //     {
-          //         std::cout << gridlinesMelih[j] << std::endl;
-          //     }
-          //   }
-          if (i == 1) {
-            for (int j = 0; j < toIntersect.size(); j++) {
-              std::cout << toIntersect[j] << std::endl;
-            }
-            std::cout << "end of toIntersect" << std::endl;
-          }
-
-          auto infill = Intersect({gridLines}, toIntersect, FillRule::EvenOdd);
-          if (i == 1) {
-            for (int j = 0; j < infill.size(); j++) {
-              std::cout << infill[j] << std::endl;
-            }
-            std::cout << "end of infill" << std::endl;
-          }
-          state.shells.push_back(shells_pathds);
-          state.perimeters.push_back(perimeter);
-
-          //   // Test with 2 rectangles
-          PathD horizontalRectangle = generateHorRectangle(
-              state.infillDensity, printer.getNozzle(), min, max);
-          PathD verticalRectangle = generateVerRectangle(
-              state.infillDensity, printer.getNozzle(), min, max);
-          auto intersectOfLeftCornerShouldBeSquare = Intersect(
-              {horizontalRectangle}, {verticalRectangle}, FillRule::EvenOdd);
-          // state.infill.push_back({intersectOfLeftCornerShouldBeSquare});
-          //   ClipperD cp = ClipperD();
-          //   cp.AddPath({verticalRectangle});
-
-          state.infill.push_back(infill);
-          state.slices.emplace_back(state.shells[i], state.infill[i],
-                                    state.perimeters[i]);
+          auto infill = Intersect({gridLines}, toIntersect, FillRule::NonZero);
+          state.slices.emplace_back(shells, PathsD({gridLines}), perimeter);
         }
       }
 
       if (ImGui::Button("Export to g-code",
                         ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        GcodeWriter::NewGcodeFile("output.gcode");
-        GcodeWriter::WriteHeader(state.extrusion);
-        for (int i = 0; i < state.slices.size(); i++) {
-          GcodeWriter::WriteSlice(state.slices[i],
-                                  state.layerHeight * i + state.layerHeight,
-                                  printer.getNozzle(), state.extrusion, i == 0);
-          // break;
-        }
-
-        GcodeWriter::WriteFooter(state.extrusion);
-        GcodeWriter::CloseGcodeFile();
+        GcodeWriter::WriteGcode(state.slices,
+                                {
+                                    .outFilePath = "output.gcode",
+                                    .layerHeight = state.layerHeight,
+                                    .nozzle = printer.getNozzle(),
+                                    .bedTemp = state.bedTemp,
+                                    .nozzleTemp = state.nozzleTemp,
+                                });
       }
     }
     ImGui::End();

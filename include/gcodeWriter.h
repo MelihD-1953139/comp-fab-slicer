@@ -3,14 +3,35 @@
 #include "slice.h"
 #include <fstream>
 
+#define FILLAMENT_DIAMETER 1.75f
+
+struct GcodeSettings {
+  const char *outFilePath;
+  float layerHeight;
+  float nozzle;
+  int bedTemp;
+  int nozzleTemp;
+};
+
 class GcodeWriter {
 public:
-  static void NewGcodeFile(const char *filename);
-  static void WriteHeader(float &extrusion); // TODO add parameters: temperature, speed, etc.
-  static void WriteSlice(const Slice &slice, float layerHeight, float nozzle, float &extrusion, bool firstSlice);
-  static void WriteFooter(float &extrusion);
-  static void CloseGcodeFile();
+  static void WriteGcode(const std::vector<Slice> &slices,
+                         const GcodeSettings settings);
 
 private:
+  static void NewGcodeFile(const char *filename);
+  static void WriteHeader();
+  static void WriteSlice(const Slice &slice);
+  static void WritePath(const Contour &contour);
+  static void WriteFooter();
+  static void CloseGcodeFile();
+
   static std::ofstream m_file;
+  static float extrusion;
+  static float layerHeight;
+  static float nozzle;
+  static int bedTemp;
+  static int nozzleTemp;
+  constexpr static const float fa =
+      FILLAMENT_DIAMETER * FILLAMENT_DIAMETER * glm::pi<float>() / 4;
 };
