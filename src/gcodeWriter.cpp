@@ -13,7 +13,7 @@ void GcodeWriter::WriteHeader()
     m_file << "M104 S200\n";
     m_file << "M109 S200\n";
     m_file << "G21 ;set units to millimeters\n";
-    m_file << "M82 ;set extruder to absolute mode\n";
+    m_file << "M83 ;set extruder to absolute mode\n";
     m_file << "G28 ;home all axes\n";
     m_file << "G92 E0 ;zero the extruder\n";
     m_file << "G1 Z2.0 F3000\n";
@@ -25,6 +25,8 @@ void GcodeWriter::WriteHeader()
     m_file
         << "G1 Z2.0 F3000 ;move Z up little to prevent scratching of Heat Bed\n";
     m_file << "G92 E0 ;zero the extruder\n";
+    m_file << "G1 F2700 E-5\n";
+    m_file << "M107\n";
 }
 
 void GcodeWriter::WriteSlice(const Slice &slice, float layerHeight,
@@ -39,7 +41,7 @@ void GcodeWriter::WriteSlice(const Slice &slice, float layerHeight,
             continue;
 
         m_file << "G0 X" << points[0].x << " Y" << points[0].z << " Z" << layerHeight << "\n";
-
+        float extrusion;
         for (size_t i = 1; i < points.size(); i++)
         {
             float extrusion = layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
@@ -50,44 +52,44 @@ void GcodeWriter::WriteSlice(const Slice &slice, float layerHeight,
     }
 
     // Write infill
-    m_file << "; Writing infill\n";
-    for (const Contour &infill : slice.getInfill())
-    {
-        auto points = infill.getPoints();
-        if (points.empty())
-            continue;
+    // m_file << "; Writing infill\n";
+    // for (const Contour &infill : slice.getInfill())
+    // {
+    //     auto points = infill.getPoints();
+    //     if (points.empty())
+    //         continue;
 
-        m_file << "G0 X" << points[0].x << " Y" << points[0].z << " Z" << layerHeight << "\n";
+    //     m_file << "G0 X" << points[0].x << " Y" << points[0].z << " Z" << layerHeight << "\n";
 
-        for (size_t i = 1; i < points.size(); i++)
-        {
-            float extrusion = layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
-            m_file << "G1 X" << points[i].x << " Y" << points[i].z << " E" << extrusion << "\n";
-        }
+    //     for (size_t i = 1; i < points.size(); i++)
+    //     {
+    //         float extrusion = layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
+    //         m_file << "G1 X" << points[i].x << " Y" << points[i].z << " E" << extrusion << "\n";
+    //     }
 
-        // Aanzetten als men terugwilt naar beginpunt.
-        // m_file << "G1 X" << points[0].x << " Y" << points[0].z << "\n";
-    }
+    //     // Aanzetten als men terugwilt naar beginpunt.
+    //     // m_file << "G1 X" << points[0].x << " Y" << points[0].z << "\n";
+    // }
 
-    // Write perimeter
-    m_file << "; Writing perimeter\n";
-    for (const Contour &perimeter : slice.getPerimeters())
-    {
-        auto points = perimeter.getPoints();
-        if (points.empty())
-            continue;
+    // // Write perimeter
+    // m_file << "; Writing perimeter\n";
+    // for (const Contour &perimeter : slice.getPerimeters())
+    // {
+    //     auto points = perimeter.getPoints();
+    //     if (points.empty())
+    //         continue;
 
-        m_file << "G0 X" << points[0].x << " Y" << points[0].z << " Z" << layerHeight << "\n";
+    //     m_file << "G0 X" << points[0].x << " Y" << points[0].z << " Z" << layerHeight << "\n";
 
-        for (size_t i = 1; i < points.size(); i++)
-        {
-            float extrusion = layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
-            m_file << "G1 X" << points[i].x << " Y" << points[i].z << " E" << extrusion << "\n";
-        }
+    //     for (size_t i = 1; i < points.size(); i++)
+    //     {
+    //         float extrusion = layerHeight * nozzle * glm::distance(points[i - 1], points[i]) / FA;
+    //         m_file << "G1 X" << points[i].x << " Y" << points[i].z << " E" << extrusion << "\n";
+    //     }
 
-        // Aanzetten als men terugwilt naar beginpunt.
-        // m_file << "G1 X" << points[0].x << " Y" << points[0].z << "\n";
-    }
+    //     // Aanzetten als men terugwilt naar beginpunt.
+    //     // m_file << "G1 X" << points[0].x << " Y" << points[0].z << "\n";
+    // }
 }
 
 void GcodeWriter::WriteFooter()
