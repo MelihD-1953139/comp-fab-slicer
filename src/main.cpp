@@ -394,6 +394,7 @@ int main(int argc, char *argv[]) {
           state.shells.push_back(shells_pathds);
           state.perimeters.push_back(perimeter);
 
+<<<<<<< HEAD
           //   // Test with 2 rectangles
           //   PathD horizontalRectangle =
           //   generateHorRectangle(state.infillDensity, printer.getNozzle(),
@@ -403,6 +404,16 @@ int main(int argc, char *argv[]) {
           //   Intersect({horizontalRectangle}, {verticalRectangle},
           //   FillRule::EvenOdd);
           //   state.infill.push_back({intersectOfLeftCornerShouldBeSquare});
+=======
+          //   // Test with 2 rectangles
+          PathD horizontalRectangle = generateHorRectangle(
+              state.infillDensity, printer.getNozzle(), min, max);
+          PathD verticalRectangle = generateVerRectangle(
+              state.infillDensity, printer.getNozzle(), min, max);
+          auto intersectOfLeftCornerShouldBeSquare = Intersect(
+              {horizontalRectangle}, {verticalRectangle}, FillRule::EvenOdd);
+          // state.infill.push_back({intersectOfLeftCornerShouldBeSquare});
+>>>>>>> 912aa72e79dd825035a3fc0fc130ce161ff36ebd
           state.infill.push_back(infill);
           state.slices.emplace_back(state.shells[i], state.infill[i],
                                     state.perimeters[i]);
@@ -414,7 +425,8 @@ int main(int argc, char *argv[]) {
         GcodeWriter::NewGcodeFile("output.gcode");
         GcodeWriter::WriteHeader();
         for (int i = 0; i < state.slices.size(); i++) {
-          GcodeWriter::WriteSlice(state.slices[i], state.layerHeight * i,
+          GcodeWriter::WriteSlice(state.slices[i],
+                                  state.layerHeight * i + state.layerHeight,
                                   printer.getNozzle());
         }
 
