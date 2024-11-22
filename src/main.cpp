@@ -1,6 +1,7 @@
 #include "Nexus/Log.h"
 #include "clipper2/clipper.core.h"
 #include "clipper2/clipper.offset.h"
+#include <cmath>
 #include <cstdint>
 #define ZEROY glm::vec3(1.0f, 0.0f, 1.0f)
 
@@ -283,16 +284,22 @@ int main(int argc, char *argv[]) {
                 "Position", position, 0,
                 glm::min(printer.getSize().x, printer.getSize().z))) {
           model.setPosition({position[0], position[1], position[2]});
+          state.maxSliceIndex = static_cast<int>(
+              std::ceil(model.getHeight() / state.layerHeight));
         }
         float scale[3] = {model.getScale().x, model.getScale().y,
                           model.getScale().z};
         if (ImGui::SliderFloat3("Scale", scale, 0, 10)) {
           model.setScale({scale[0], scale[1], scale[2]});
+          state.maxSliceIndex = static_cast<int>(
+              std::ceil(model.getHeight() / state.layerHeight));
         }
         float rotation[3] = {model.getRotation().x, model.getRotation().y,
                              model.getRotation().z};
         if (ImGui::SliderFloat3("Rotation", rotation, -180, 180)) {
           model.setRotation({rotation[0], rotation[1], rotation[2]});
+          state.maxSliceIndex = static_cast<int>(
+              std::ceil(model.getHeight() / state.layerHeight));
         }
 
         ImGui::Checkbox("Drop model down", &state.dropDown);
@@ -328,6 +335,7 @@ int main(int argc, char *argv[]) {
 
         state.slices.clear();
 
+        Logger::debug("Max slice index {}", state.maxSliceIndex);
         for (int i = 1; i < state.maxSliceIndex; ++i) {
           auto slice = model.getSlice(state.layerHeight * i + 0.000000001);
           auto perimeter = Union(slice, FillRule::EvenOdd);
@@ -356,7 +364,7 @@ int main(int argc, char *argv[]) {
                 state.infillDensity, printer.getNozzle(), min, max);
 
           auto infill = Intersect({gridLines}, toIntersect, FillRule::NonZero);
-          state.slices.emplace_back(shells, PathsD({gridLines}), perimeter);
+          state.slices.emplace_back(shells, infill, perimeter);
         }
       }
 

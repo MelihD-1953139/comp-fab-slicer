@@ -20,8 +20,9 @@ void GcodeWriter::WriteGcode(const std::vector<Slice> &slices,
   NewGcodeFile(settings.outFilePath);
   WriteHeader();
   m_file << "M107 ;turn off fan\n";
+  m_file << ";LAYER_COUNT:" << slices.size() << "\n";
   for (int i = 0; i < slices.size(); i++) {
-    m_file << "; Layer " << i << "\n";
+    m_file << ";LAYER:" << i << "\n";
     layerHeight = settings.layerHeight * (i + 1);
     if (i == 2)
       m_file << "M106 S255 ;turn on fan\n";
@@ -71,15 +72,15 @@ void GcodeWriter::WritePath(const Contour &contour) {
 }
 
 void GcodeWriter::WriteSlice(const Slice &slice) {
-  m_file << "; Writing shells\n";
+  m_file << ";TYPE:WALL-INNER\n";
   for (const Contour &shell : slice.getShells())
     WritePath(shell);
 
-  m_file << "; Writing perimeter\n";
+  m_file << ";TYPE:WALL-OUTER\n";
   for (const Contour &perimeter : slice.getPerimeters())
     WritePath(perimeter);
 
-  m_file << "; Writing infill\n";
+  m_file << ";TYPE:FILL\n";
   for (const Contour &infill : slice.getInfill())
     WritePath(infill);
 }

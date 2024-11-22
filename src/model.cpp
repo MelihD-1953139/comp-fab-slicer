@@ -6,6 +6,8 @@
 #include <assimp/scene.h>
 
 #include <assimp/Importer.hpp>
+#include <iostream>
+#include <unordered_set>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -109,7 +111,8 @@ Slice Model::getSlice(double sliceHeight) {
       float t = (sliceHeight - v1.y) / (v2.y - v1.y);
       segment.setNextPoint((v1 + t * (v2 - v1)));
     }
-    lineSegments.push_back(segment * glm::vec3(1.0f, 0.0f, 1.0f));
+    if (segment.p1 != segment.p2)
+      lineSegments.push_back(segment * glm::vec3(1.0f, 0.0f, 1.0f));
   }
 
   return {lineSegments};
