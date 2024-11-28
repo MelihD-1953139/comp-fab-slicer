@@ -152,5 +152,5 @@ Slice::operator PathsD() const {
   for (auto &contour : m_shells) {
     paths.emplace_back(contour);
   }
-  return paths;
+  return SimplifyPaths(paths, 0.000001);
 }

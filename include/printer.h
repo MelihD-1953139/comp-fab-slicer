@@ -11,6 +11,7 @@ public:
 
   void setSize(glm::ivec3 size);
   glm::ivec3 getSize() const;
+  int *getSizePtr();
   glm::vec3 getCenter() const;
   float getNozzle() const;
   float *getNozzlePtr();

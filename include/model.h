@@ -29,12 +29,17 @@ public:
   glm::vec3 getMin() const;
   glm::vec3 getMax() const;
   glm::vec3 getCenter() const;
+
   void setPosition(glm::vec3 position);
   glm::vec3 getPosition() const;
+  float *getPositionPtr();
   void setRotation(glm::vec3 rotation);
   const glm::vec3 &getRotation() const;
+  float *getRotationPtr();
   void setScale(glm::vec3 scale);
   const glm::vec3 &getScale() const;
+  float *getScalePtr();
+
   float getHeight();
 
   Slice getSlice(double sliceHeight);

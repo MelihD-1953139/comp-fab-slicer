@@ -7,6 +7,7 @@ float GcodeWriter::layerThickness;
 float GcodeWriter::nozzle;
 int GcodeWriter::bedTemp;
 int GcodeWriter::nozzleTemp;
+int GcodeWriter::speed;
 
 void GcodeWriter::WriteGcode(const std::vector<Slice> &slices,
                              GcodeSettings settings) {
@@ -16,6 +17,7 @@ void GcodeWriter::WriteGcode(const std::vector<Slice> &slices,
   GcodeWriter::bedTemp = settings.bedTemp;
   GcodeWriter::nozzleTemp = settings.nozzleTemp;
   GcodeWriter::layerThickness = settings.layerHeight;
+  GcodeWriter::speed = settings.speed * 60;
 
   NewGcodeFile(settings.outFilePath);
   WriteHeader();
@@ -66,8 +68,8 @@ void GcodeWriter::WritePath(const Contour &contour) {
   for (size_t i = 1; i < points.size(); i++) {
     extrusion +=
         layerThickness * nozzle * glm::distance(points[i - 1], points[i]) / fa;
-    m_file << "G1 F1200 X" << points[i].x << " Y" << points[i].z << " E"
-           << extrusion << "\n";
+    m_file << "G1 F" << speed << " X" << points[i].x << " Y" << points[i].z
+           << " E" << extrusion << "\n";
   }
 }
 

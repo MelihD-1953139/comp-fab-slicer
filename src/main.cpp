@@ -1,22 +1,22 @@
-#include "Nexus/Log.h"
-#include "clipper2/clipper.core.h"
-#include "clipper2/clipper.offset.h"
-#include <cmath>
-#include <cstdint>
-#define ZEROY glm::vec3(1.0f, 0.0f, 1.0f)
-
 #include "camera.h"
 #include "framebuffer.h"
 #include "gcodeWriter.h"
 #include "printer.h"
+#include "state.h"
 
 #include <Nexus.h>
+#include <Nexus/Log.h>
 #include <Nexus/Window/GLFWWindow.h>
+#include <clipper2/clipper.core.h>
 #include <clipper2/clipper.h>
+#include <clipper2/clipper.offset.h>
+#include <cmath>
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <imgui.h>
 #include <memory>
 
+#define ZEROY glm::vec3(1.0f, 0.0f, 1.0f)
 #define SHADER_VERT_PATH "../res/shaders/base.vert"
 #define SHADER_FRAG_PATH "../res/shaders/base.frag"
 #define SLICEVIEW_VERT_PATH "../res/shaders/sliceview.vert"
@@ -24,78 +24,48 @@
 using namespace Nexus;
 using namespace Clipper2Lib;
 
+State g_state{};
+
 void usage(const char *program) {
   Logger::info("Usage: {} <filename>", program);
 }
 
-struct State {
-  bool slice;
-  bool showDemoWindow;
-  std::pair<int, int> windowSize;
-  float layerHeight;
-  int maxSliceIndex;
-  int sliceIndex;
-  bool showSlicePlane;
-  char fileBuffer[256];
-  int shellCount;
-  float infillDensity;
-  bool dropDown;
-  float extrusion;
-  int bedTemp;
-  int nozzleTemp;
-  std::vector<Slice> slices;
-  std::vector<PathsD> infill;
-  std::vector<PathsD> perimeters;
-  std::vector<PathsD> shells;
-};
-
 PathsD generateSparseRectangleInfill(float density, PointD min, PointD max) {
-  PathsD infill;
   double step = 1.0f / density;
+  bool leftToRight = true;
 
+  PathsD infill;
   for (double y = min.y; y <= max.y; y += step) {
-    PathD rect = {
-        {min.x, y},
-        {max.x, y},
-    };
-    infill.push_back(rect);
+    leftToRight ? infill.push_back({
+                      {min.x, y},
+                      {max.x, y},
+                  })
+                : infill.push_back({
+                      {max.x, y},
+                      {min.x, y},
+                  });
+    leftToRight = !leftToRight;
   }
-
   for (double x = min.x; x <= max.x; x += step) {
-    PathD rect = {
-        {x, min.y},
-        {x, max.y},
-    };
-    infill.push_back(rect);
+    leftToRight ? infill.push_back({
+                      {x, min.y},
+                      {x, max.y},
+                  })
+                : infill.push_back({
+                      {x, max.y},
+                      {x, min.y},
+                  });
+    leftToRight = !leftToRight;
   }
 
   return infill;
 }
 
-std::pair<PointD, PointD> getMinMax(PathsD &paths) {
-  PointD min = {std::numeric_limits<double>::max(),
-                std::numeric_limits<double>::max()};
-  PointD max = {std::numeric_limits<double>::min(),
-                std::numeric_limits<double>::min()};
-  for (auto &path : paths) {
-    for (auto &point : path) {
-      min.x = std::min(min.x, point.x);
-      min.y = std::min(min.y, point.y);
-      max.x = std::max(max.x, point.x);
-      max.y = std::max(max.y, point.y);
-    }
-  }
-  return {min, max};
-}
-
 int main(int argc, char *argv[]) {
   Logger::setLevel(LogLevel::Trace);
 
-  if (argc < 2) {
-    Logger::critical("Invalid number of arguments");
-    usage(argv[0]);
-    return 1;
-  }
+  if (argc >= 2)
+    strcpy(g_state.fileBuffer, argv[1]);
 
   auto window = std::unique_ptr<Window>(Window::create(WindowProps("Slicer")));
   window->setVSync(true);
@@ -103,35 +73,18 @@ int main(int argc, char *argv[]) {
   Shader shader(SHADER_VERT_PATH, SHADER_FRAG_PATH);
 
   Printer printer("../res/models/plane.obj", "../res/models/plane.obj");
-  Model model(argv[1]);
+  Model model(g_state.fileBuffer);
   model.setPosition(printer.getCenter() * ZEROY +
                     glm::vec3(0.0f, model.getHeight() / 2.0f, 0.0f));
+  g_state.maxSliceIndex =
+      std::ceil<int>(model.getHeight() / g_state.layerHeight);
 
   PerspectiveCamera camera(0.0f, 45.0f, 300.0f);
   OrthographicCamera topDownCamera(0.0f, 0.0f, printer.getSize().y);
 
-  State state{
-      .slice = false,
-      .showDemoWindow = false,
-      .windowSize{1280, 720},
-      .layerHeight = 0.2f,
-      .maxSliceIndex =
-          static_cast<int>(std::ceil(model.getHeight() / state.layerHeight)),
-      .sliceIndex = 1,
-      .showSlicePlane = false,
-      .fileBuffer = "",
-      .shellCount = 1,
-      .infillDensity = 20.0f,
-      .dropDown = true,
-      .extrusion = 0.0f,
-      .bedTemp = 50,
-      .nozzleTemp = 200,
-  };
+  printer.setSliceHeight(g_state.layerHeight * g_state.sliceIndex);
 
-  strcpy(state.fileBuffer, argv[1]);
-  printer.setSliceHeight(state.layerHeight * state.sliceIndex);
-
-  Framebuffer viewBuffer(state.windowSize.first, state.windowSize.second);
+  Framebuffer viewBuffer(g_state.windowSize.x, g_state.windowSize.y);
   Framebuffer sliceBuffer(printer.getSize().x, printer.getSize().z);
 
   // Callbacks
@@ -146,7 +99,7 @@ int main(int argc, char *argv[]) {
         if (key == GLFW_KEY_D && action != GLFW_RELEASE)
           camera.orbit(1.0f, 0.0f);
         if (key == GLFW_KEY_SPACE && action != GLFW_RELEASE)
-          state.showDemoWindow = !state.showDemoWindow;
+          g_state.showDemoWindow = !g_state.showDemoWindow;
 
         if (key == GLFW_KEY_UP && action != GLFW_RELEASE)
           camera.offsetDistanceFromTarget(-5.0f);
@@ -155,8 +108,7 @@ int main(int argc, char *argv[]) {
         return false;
       })
       ->onResize([&](int width, int height) -> bool {
-        state.windowSize = {width, height};
-        state.slice = true;
+        g_state.windowSize = {width, height};
         return false;
       });
 
@@ -164,112 +116,90 @@ int main(int argc, char *argv[]) {
   window->whileOpen([&]() {
     ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
 
-    if (state.showDemoWindow)
+    if (g_state.showDemoWindow)
       ImGui::ShowDemoWindow();
 
     ImGui::Begin("Control Panel");
     {
       if (ImGui::CollapsingHeader("Printer settings")) {
-        int printerSize[3] = {printer.getSize().x, printer.getSize().y,
-                              printer.getSize().z};
-        if (ImGui::InputInt3("Printer Size (mm)", printerSize)) {
-          printer.setSize({printerSize[0], printerSize[1], printerSize[2]});
+        if (ImGui::InputInt3("Printer Size (mm)", printer.getSizePtr()))
           model.setPosition(printer.getCenter() * ZEROY);
-        }
 
         ImGui::InputFloat("Printer Nozel", printer.getNozzlePtr(), 0.0f, 0.0f,
                           "%.2f mm");
 
-        ImGui::InputInt("Bed Temp", &state.bedTemp);
-        ImGui::InputInt("Nozzle Temp", &state.nozzleTemp);
+        ImGui::InputInt("Bed Temp", &g_state.bedTemp);
+        ImGui::InputInt("Nozzle Temp", &g_state.nozzleTemp);
+        ImGui::InputFloat("Speed", &g_state.speed, 0.0f, 0.0f, "%.2f mm/s");
       }
 
       if (ImGui::CollapsingHeader("Object settings")) {
-        ImGui::InputText("Model file", state.fileBuffer,
-                         IM_ARRAYSIZE(state.fileBuffer));
+        g_state.maxSliceIndex =
+            std::ceil<int>(model.getHeight() / g_state.layerHeight);
+
+        ImGui::InputText("Model file", g_state.fileBuffer,
+                         IM_ARRAYSIZE(g_state.fileBuffer));
         if (ImGui::Button("Load")) {
-          model = Model(state.fileBuffer);
+          model = Model(g_state.fileBuffer);
           model.setPosition(printer.getCenter() * ZEROY);
-          state.maxSliceIndex = static_cast<int>(
-              std::ceil(model.getHeight() / state.layerHeight));
+          g_state.maxSliceIndex = static_cast<int>(
+              std::ceil(model.getHeight() / g_state.layerHeight));
         }
 
-        float position[3] = {model.getPosition().x, model.getPosition().y,
-                             model.getPosition().z};
-        if (ImGui::SliderFloat3(
-                "Position", position, 0,
-                glm::min(printer.getSize().x, printer.getSize().z))) {
-          model.setPosition({position[0], position[1], position[2]});
-          state.maxSliceIndex = static_cast<int>(
-              std::ceil(model.getHeight() / state.layerHeight));
-        }
-        float scale[3] = {model.getScale().x, model.getScale().y,
-                          model.getScale().z};
-        if (ImGui::SliderFloat3("Scale", scale, 0, 10)) {
-          model.setScale({scale[0], scale[1], scale[2]});
-          state.maxSliceIndex = static_cast<int>(
-              std::ceil(model.getHeight() / state.layerHeight));
-        }
-        float rotation[3] = {model.getRotation().x, model.getRotation().y,
-                             model.getRotation().z};
-        if (ImGui::SliderFloat3("Rotation", rotation, -180, 180)) {
-          model.setRotation({rotation[0], rotation[1], rotation[2]});
-          state.maxSliceIndex = static_cast<int>(
-              std::ceil(model.getHeight() / state.layerHeight));
-        }
+        ImGui::DragFloat3("Position", model.getPositionPtr(), 0,
+                          glm::min(printer.getSize().x, printer.getSize().z));
+        ImGui::DragFloat3("Scale", model.getScalePtr(), 0, 10);
+        ImGui::DragFloat3("Rotation", model.getRotationPtr(), -180, 180);
 
-        ImGui::Checkbox("Drop model down", &state.dropDown);
+        ImGui::Checkbox("Drop model down", &g_state.dropDown);
       }
 
       if (ImGui::CollapsingHeader("Slice settings")) {
-        if (ImGui::SliderInt("Slice Index", &state.sliceIndex, 1,
-                             state.maxSliceIndex - 1)) {
-          printer.setSliceHeight(state.sliceIndex * state.layerHeight);
+        if (ImGui::SliderInt("Slice Index", &g_state.sliceIndex, 1,
+                             g_state.maxSliceIndex - 1)) {
+          printer.setSliceHeight(g_state.sliceIndex * g_state.layerHeight);
         }
 
-        ImGui::Checkbox("Show Slice Plane", &state.showSlicePlane);
+        ImGui::Checkbox("Show Slice Plane", &g_state.showSlicePlane);
 
-        if (ImGui::InputFloat("Layer Height", &state.layerHeight, 0.0f, 0.0f,
+        if (ImGui::InputFloat("Layer Height", &g_state.layerHeight, 0.0f, 0.0f,
                               "%.2f mm")) {
-          state.layerHeight =
-              std::clamp(state.layerHeight, 0.0f, printer.getNozzle() * 0.8f);
-          state.maxSliceIndex = static_cast<int>(
-              std::ceil(model.getHeight() / state.layerHeight));
+          g_state.layerHeight =
+              std::clamp(g_state.layerHeight, 0.0f, printer.getNozzle() * 0.8f);
         }
 
-        if (ImGui::InputInt("Shell count", &state.shellCount)) {
-          state.shellCount = std::clamp(state.shellCount, 1, 10);
+        if (ImGui::InputInt("Shell count", &g_state.shellCount)) {
+          g_state.shellCount = std::clamp(g_state.shellCount, 1, 10);
         }
 
-        if (ImGui::InputFloat("Infill Density", &state.infillDensity, 0.0f,
+        if (ImGui::InputFloat("Infill Density", &g_state.infillDensity, 0.0f,
                               0.0f, "%.2f %%")) {
-          state.infillDensity = std::clamp(state.infillDensity, 0.0f, 100.0f);
+          g_state.infillDensity =
+              std::clamp(g_state.infillDensity, 0.0f, 100.0f);
         }
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 
-        state.slices.clear();
-        for (int i = 1; i < state.maxSliceIndex; ++i) {
-          auto slice = model.getSlice(state.layerHeight * i + 0.000000001);
-          auto perimeter =
-              Union(SimplifyPaths(PathsD(slice), 0.000001), FillRule::EvenOdd);
-
-          auto [min, max] = getMinMax(perimeter);
+        g_state.slices.clear();
+        for (int i = 1; i < g_state.maxSliceIndex; ++i) {
+          auto slice = model.getSlice(g_state.layerHeight * i);
+          auto perimeter = Union(slice, FillRule::EvenOdd);
 
           perimeter = InflatePaths(perimeter, -printer.getNozzle() / 2.0f,
                                    JoinType::Miter, EndType::Polygon);
 
           PathsD shells;
           PathsD lastShell = perimeter;
-          for (int j = 1; j < state.shellCount; ++j) {
+          for (int j = 1; j < g_state.shellCount; ++j) {
             lastShell = InflatePaths(perimeter, -printer.getNozzle() * j,
                                      JoinType::Miter, EndType::Polygon);
             shells.append_range(lastShell);
           }
 
           PathsD infillRaw = generateSparseRectangleInfill(
-              state.infillDensity / 100.0f, min, max);
+              g_state.infillDensity / 100.0f, {0, 0},
+              {printer.getSize().x, printer.getSize().z});
 
           ClipperD clipper;
           clipper.AddClip(lastShell);
@@ -278,19 +208,20 @@ int main(int argc, char *argv[]) {
           clipper.Execute(ClipType::Intersection, FillRule::EvenOdd,
                           infillClosed, infillOpen);
 
-          state.slices.emplace_back(shells, infillOpen, perimeter);
+          g_state.slices.emplace_back(shells, infillOpen, perimeter);
         }
       }
 
       if (ImGui::Button("Export to g-code",
                         ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        GcodeWriter::WriteGcode(state.slices,
+        GcodeWriter::WriteGcode(g_state.slices,
                                 {
                                     .outFilePath = "output.gcode",
-                                    .layerHeight = state.layerHeight,
+                                    .layerHeight = g_state.layerHeight,
                                     .nozzle = printer.getNozzle(),
-                                    .bedTemp = state.bedTemp,
-                                    .nozzleTemp = state.nozzleTemp,
+                                    .bedTemp = g_state.bedTemp,
+                                    .nozzleTemp = g_state.nozzleTemp,
+                                    .speed = g_state.speed,
                                 });
       }
     }
@@ -308,12 +239,11 @@ int main(int argc, char *argv[]) {
         viewBuffer.bind();
         {
           viewBuffer.resize(width, height);
-          glViewport(0, 0, width, height);
           viewBuffer.clear();
 
           printer.render(shader, view, projection, glm::vec3(0.7f, 0.7f, 0.7f),
-                         glm::vec3(0.0f, 0.0f, 1.0f), state.showSlicePlane);
-          if (state.dropDown) {
+                         glm::vec3(0.0f, 0.0f, 1.0f), g_state.showSlicePlane);
+          if (g_state.dropDown) {
             auto pos = model.getPosition();
             model.setPosition({pos.x, model.getHeight() / 2, pos.z});
           }
@@ -330,7 +260,7 @@ int main(int argc, char *argv[]) {
       ImGui::Begin("Slice View");
       {
         sliceBuffer.bind();
-        if (!state.slices.empty()) {
+        if (!g_state.slices.empty()) {
           const int width = ImGui::GetContentRegionAvail().x;
           const int height = ImGui::GetContentRegionAvail().y;
 
@@ -338,10 +268,9 @@ int main(int argc, char *argv[]) {
           auto projection = topDownCamera.getProjectionMatrix(width, height);
 
           sliceBuffer.resize(width, height);
-          glViewport(0, 0, width, height);
-
           sliceBuffer.clear();
-          state.slices[state.sliceIndex].render(shader, view, projection);
+
+          g_state.slices[g_state.sliceIndex].render(shader, view, projection);
         }
         sliceBuffer.unbind();
 

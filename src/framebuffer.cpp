@@ -49,6 +49,7 @@ void Framebuffer::clear() {
 }
 
 void Framebuffer::resize(int width, int height) {
+  glViewport(0, 0, width, height);
   glBindTexture(GL_TEXTURE_2D, m_texture);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
                GL_UNSIGNED_BYTE, nullptr);

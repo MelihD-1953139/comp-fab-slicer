@@ -1,4 +1,5 @@
 #include "printer.h"
+#include "glm/gtc/type_ptr.hpp"
 
 #include <Nexus.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -19,6 +20,7 @@ void Printer::setSize(glm::ivec3 size) {
 }
 
 glm::ivec3 Printer::getSize() const { return m_size; }
+int *Printer::getSizePtr() { return glm::value_ptr(m_size); }
 glm::vec3 Printer::getCenter() const { return m_base.getCenter(); }
 float Printer::getNozzle() const { return m_nozzle; }
 float *Printer::getNozzlePtr() { return &m_nozzle; }

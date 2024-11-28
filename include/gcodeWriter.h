@@ -11,6 +11,7 @@ struct GcodeSettings {
   float nozzle;
   int bedTemp;
   int nozzleTemp;
+  float speed;
 };
 
 class GcodeWriter {
@@ -33,6 +34,7 @@ private:
   static float nozzle;
   static int bedTemp;
   static int nozzleTemp;
+  static int speed;
   constexpr static const float fa =
       FILLAMENT_DIAMETER * FILLAMENT_DIAMETER * glm::pi<float>() / 4;
 };

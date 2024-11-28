@@ -1,13 +1,12 @@
 #include "model.h"
 #include "Nexus/Log.h"
+#include "glm/gtc/type_ptr.hpp"
 
 #include <Nexus.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
 #include <assimp/Importer.hpp>
-#include <iostream>
-#include <unordered_set>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -64,23 +63,8 @@ void Model::render(Shader &shader, const glm::mat4 &view,
 }
 
 glm::vec3 Model::getMin() const { return m_min * m_scale; }
-
 glm::vec3 Model::getMax() const { return m_max * m_scale; }
-
 glm::vec3 Model::getCenter() const { return m_center * m_scale; }
-
-void Model::setPosition(glm::vec3 position) { m_position = position; }
-
-glm::vec3 Model::getPosition() const { return m_position; }
-
-void Model::setRotation(glm::vec3 rotation) { m_rotation = rotation; }
-
-const glm::vec3 &Model::getRotation() const { return m_rotation; }
-
-void Model::setScale(glm::vec3 scale) { m_scale = scale; }
-
-const glm::vec3 &Model::getScale() const { return m_scale; }
-
 float Model::getHeight() {
   auto model = getModelMatrix();
   m_max = glm::vec3(-std::numeric_limits<float>::max());
@@ -93,7 +77,20 @@ float Model::getHeight() {
   return m_max.y - m_min.y;
 }
 
+void Model::setPosition(glm::vec3 position) { m_position = position; }
+glm::vec3 Model::getPosition() const { return m_position; }
+float *Model::getPositionPtr() { return glm::value_ptr(m_position); }
+
+void Model::setRotation(glm::vec3 rotation) { m_rotation = rotation; }
+const glm::vec3 &Model::getRotation() const { return m_rotation; }
+float *Model::getRotationPtr() { return glm::value_ptr(m_rotation); }
+
+void Model::setScale(glm::vec3 scale) { m_scale = scale; }
+const glm::vec3 &Model::getScale() const { return m_scale; }
+float *Model::getScalePtr() { return glm::value_ptr(m_scale); }
+
 Slice Model::getSlice(double sliceHeight) {
+  sliceHeight += +0.000000001;
   std::vector<Line> lineSegments;
   for (const auto &triangleOrig : m_triangles) {
     auto triangle = transformTriangle(triangleOrig);
