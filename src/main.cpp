@@ -49,112 +49,26 @@ struct State {
   std::vector<PathsD> shells;
 };
 
-PathD generateSparceRectangleInfillV(float density, float nozzleThickness,
-                                     PointD min, PointD max) {
-  PathD infill;
-  float xLineCount = std::ceil((max.x - min.x) / nozzleThickness);
-  float step = xLineCount / density;
+PathsD generateSparseRectangleInfill(float density, PointD min, PointD max) {
+  PathsD infill;
+  double step = 1.0f / density;
 
-  PointD current = {min.x + step, min.y};
-  while (current.x <= max.x) {
-    infill.push_back(current);
-    current.y = max.y;
-    infill.push_back(current);
-    current.x += step;
-    infill.push_back(current);
-    current.y = min.y;
-    infill.push_back(current);
-    current.x += step;
+  for (double y = min.y; y <= max.y; y += step) {
+    PathD rect = {
+        {min.x, y},
+        {max.x, y},
+    };
+    infill.push_back(rect);
   }
-  return infill;
-}
 
-PathD generateSparceRectangleInfillH(float density, float nozzleThickness,
-                                     PointD min, PointD max) {
-  PathD infill;
-  float x = min.x;
-  float y = min.y;
-  float yLineCount = std::ceil((max.y - min.y) / nozzleThickness);
-  float step = yLineCount / density;
-
-  PointD current = {x, y + step};
-  while (current.y < max.y) {
-    infill.push_back(current);
-    current.x = max.x;
-    infill.push_back(current);
-    current.y += step;
-    infill.push_back(current);
-    current.x = min.x;
-    infill.push_back(current);
-    current.y += step;
+  for (double x = min.x; x <= max.x; x += step) {
+    PathD rect = {
+        {x, min.y},
+        {x, max.y},
+    };
+    infill.push_back(rect);
   }
-  return infill;
-}
 
-PathsD generateVerticalOnlyWithoutConnecting(float density,
-                                             float nozzleThickness, PointD min,
-                                             PointD max) {
-  float x = min.x;
-  float y = min.y;
-  float xLineCount = std::ceil((max.x - min.x) / nozzleThickness);
-  float step = xLineCount / density;
-
-  PointD start = {x, y};
-  PathsD infillLines;
-  // Loop to create vertical lines
-  while (start.x <= max.x) {
-    PathD line; // Create a new path for each vertical line
-    start.y = min.y;
-    line.push_back(start); // Bottom point
-
-    start.y = max.y;
-    line.push_back(start); // Top point
-
-    infillLines.push_back(line); // Add to the list of lines
-
-    start.x += step; // Move to the next vertical line
-  }
-  return infillLines;
-}
-PathD generateHorRectangle(float density, float nozzleThickness, PointD min,
-                           PointD max) {
-  PathD infill;
-  float x = min.x;
-  float y = min.y;
-  float yLineCount = std::ceil((max.y - min.y) / nozzleThickness);
-  float step = yLineCount / density;
-
-  PointD current = {x, y};
-  infill.push_back(current);
-  current.x = max.x;
-  infill.push_back(current);
-  current.y += step;
-  infill.push_back(current);
-  current.x = min.x;
-  infill.push_back(current);
-  current = {x, y};
-  infill.push_back(current);
-  return infill;
-}
-PathD generateVerRectangle(float density, float nozzleThickness, PointD min,
-                           PointD max) {
-  PathD infill;
-  float x = min.x;
-  float y = min.y;
-  float yLineCount = std::ceil((max.y - min.y) / nozzleThickness);
-  float step = yLineCount / density;
-
-  PointD current = {x, y};
-
-  infill.push_back(current);
-  current.y = max.y;
-  infill.push_back(current);
-  current.x += step;
-  infill.push_back(current);
-  current.y = min.y;
-  infill.push_back(current);
-  current = {x, y};
-  infill.push_back(current);
   return infill;
 }
 
@@ -276,6 +190,8 @@ int main(int argc, char *argv[]) {
         if (ImGui::Button("Load")) {
           model = Model(state.fileBuffer);
           model.setPosition(printer.getCenter() * ZEROY);
+          state.maxSliceIndex = static_cast<int>(
+              std::ceil(model.getHeight() / state.layerHeight));
         }
 
         float position[3] = {model.getPosition().x, model.getPosition().y,
@@ -307,7 +223,7 @@ int main(int argc, char *argv[]) {
 
       if (ImGui::CollapsingHeader("Slice settings")) {
         if (ImGui::SliderInt("Slice Index", &state.sliceIndex, 1,
-                             state.maxSliceIndex)) {
+                             state.maxSliceIndex - 1)) {
           printer.setSliceHeight(state.sliceIndex * state.layerHeight);
         }
 
@@ -334,37 +250,35 @@ int main(int argc, char *argv[]) {
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 
         state.slices.clear();
-
-        Logger::debug("Max slice index {}", state.maxSliceIndex);
         for (int i = 1; i < state.maxSliceIndex; ++i) {
           auto slice = model.getSlice(state.layerHeight * i + 0.000000001);
-          auto perimeter = Union(slice, FillRule::EvenOdd);
+          auto perimeter =
+              Union(SimplifyPaths(PathsD(slice), 0.000001), FillRule::EvenOdd);
+
+          auto [min, max] = getMinMax(perimeter);
+
           perimeter = InflatePaths(perimeter, -printer.getNozzle() / 2.0f,
                                    JoinType::Miter, EndType::Polygon);
 
           PathsD shells;
-          PathsD lastShell;
+          PathsD lastShell = perimeter;
           for (int j = 1; j < state.shellCount; ++j) {
             lastShell = InflatePaths(perimeter, -printer.getNozzle() * j,
                                      JoinType::Miter, EndType::Polygon);
             shells.append_range(lastShell);
           }
 
-          auto toIntersect = InflatePaths(
-              shells.empty() ? perimeter : lastShell, -printer.getNozzle(),
-              JoinType::Miter, EndType::Polygon);
-          auto [min, max] = getMinMax(toIntersect);
+          PathsD infillRaw = generateSparseRectangleInfill(
+              state.infillDensity / 100.0f, min, max);
 
-          PathD gridLines;
-          if (i % 2 == 0)
-            gridLines = generateSparceRectangleInfillH(
-                state.infillDensity, printer.getNozzle(), min, max);
-          else
-            gridLines = generateSparceRectangleInfillV(
-                state.infillDensity, printer.getNozzle(), min, max);
+          ClipperD clipper;
+          clipper.AddClip(lastShell);
+          clipper.AddOpenSubject(infillRaw);
+          PathsD infillClosed, infillOpen;
+          clipper.Execute(ClipType::Intersection, FillRule::EvenOdd,
+                          infillClosed, infillOpen);
 
-          auto infill = Intersect({gridLines}, toIntersect, FillRule::NonZero);
-          state.slices.emplace_back(shells, infill, perimeter);
+          state.slices.emplace_back(shells, infillOpen, perimeter);
         }
       }
 
