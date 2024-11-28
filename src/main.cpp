@@ -19,7 +19,6 @@
 #define ZEROY glm::vec3(1.0f, 0.0f, 1.0f)
 #define SHADER_VERT_PATH "../res/shaders/base.vert"
 #define SHADER_FRAG_PATH "../res/shaders/base.frag"
-#define SLICEVIEW_VERT_PATH "../res/shaders/sliceview.vert"
 
 using namespace Nexus;
 using namespace Clipper2Lib;
@@ -90,21 +89,44 @@ int main(int argc, char *argv[]) {
   // Callbacks
   window
       ->onKey([&](int key, int scancode, int action, int mods) -> bool {
-        if (key == GLFW_KEY_W && action != GLFW_RELEASE)
-          camera.orbit(0.0f, -1.0f);
-        if (key == GLFW_KEY_S && action != GLFW_RELEASE)
-          camera.orbit(0.0f, 1.0f);
-        if (key == GLFW_KEY_A && action != GLFW_RELEASE)
-          camera.orbit(-1.0f, 0.0f);
-        if (key == GLFW_KEY_D && action != GLFW_RELEASE)
-          camera.orbit(1.0f, 0.0f);
-        if (key == GLFW_KEY_SPACE && action != GLFW_RELEASE)
-          g_state.showDemoWindow = !g_state.showDemoWindow;
+        if (action == GLFW_RELEASE)
+          return false;
 
-        if (key == GLFW_KEY_UP && action != GLFW_RELEASE)
-          camera.offsetDistanceFromTarget(-5.0f);
-        if (key == GLFW_KEY_DOWN && action != GLFW_RELEASE)
-          camera.offsetDistanceFromTarget(5.0f);
+        if (g_state.modelViewFocused) {
+          switch (key) {
+          case GLFW_KEY_W:
+            camera.orbit(0.0f, -1.0f);
+            break;
+          case GLFW_KEY_S:
+            camera.orbit(0.0f, 1.0f);
+            break;
+          case GLFW_KEY_A:
+            camera.orbit(1.0f, 0.0f);
+            break;
+          case GLFW_KEY_D:
+            camera.orbit(-1.0f, 0.0f);
+            break;
+          case GLFW_KEY_UP:
+            camera.offsetDistanceFromTarget(-5.0f);
+            break;
+          case GLFW_KEY_DOWN:
+            camera.offsetDistanceFromTarget(5.0f);
+            break;
+          }
+        } else if (g_state.sliceViewFocused) {
+          switch (key) {
+          case GLFW_KEY_W:
+          case GLFW_KEY_UP:
+          case GLFW_KEY_KP_ADD:
+            g_state.sliceScale += 0.5f;
+            break;
+          case GLFW_KEY_S:
+          case GLFW_KEY_DOWN:
+          case GLFW_KEY_KP_SUBTRACT:
+            g_state.sliceScale -= 0.5f;
+            break;
+          }
+        }
         return false;
       })
       ->onResize([&](int width, int height) -> bool {
@@ -231,6 +253,8 @@ int main(int argc, char *argv[]) {
     {
       ImGui::Begin("3D View");
       {
+        g_state.modelViewFocused = ImGui::IsWindowFocused();
+
         const int width = ImGui::GetContentRegionAvail().x;
         const int height = ImGui::GetContentRegionAvail().y;
         auto view = camera.getViewMatrix(printer.getCenter() * ZEROY);
@@ -259,18 +283,22 @@ int main(int argc, char *argv[]) {
 
       ImGui::Begin("Slice View");
       {
+        g_state.sliceViewFocused = ImGui::IsWindowFocused();
+
         sliceBuffer.bind();
         if (!g_state.slices.empty()) {
           const int width = ImGui::GetContentRegionAvail().x;
           const int height = ImGui::GetContentRegionAvail().y;
 
-          auto view = topDownCamera.getViewMatrix(printer.getCenter() * ZEROY);
+          auto position = printer.getCenter() * ZEROY;
+          auto view = topDownCamera.getViewMatrix(position);
           auto projection = topDownCamera.getProjectionMatrix(width, height);
 
           sliceBuffer.resize(width, height);
           sliceBuffer.clear();
 
-          g_state.slices[g_state.sliceIndex].render(shader, view, projection);
+          g_state.slices[g_state.sliceIndex].render(
+              shader, position, g_state.sliceScale, view, projection);
         }
         sliceBuffer.unbind();
 

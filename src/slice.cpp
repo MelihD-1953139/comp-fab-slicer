@@ -41,7 +41,7 @@ Contour::Contour(PathD path, bool isClosed) {
   initOpenGLBuffers();
 }
 
-void Contour::draw(Shader &shader, glm::vec3 color) {
+void Contour::draw(Shader &shader, glm::vec3 color) const {
   shader.use();
   shader.setVec3("color", color);
 
@@ -124,20 +124,41 @@ Slice::Slice(const PathsD &shells, const PathsD &infill,
   for (auto &path : shells) {
     m_shells.emplace_back(path);
   }
-  for (auto &path : infill) {
-    m_infill.emplace_back(path, false);
-  }
   for (auto &path : perimeters) {
     m_perimeters.emplace_back(path);
   }
+  for (auto &path : infill) {
+    m_infill.emplace_back(path, false);
+  }
 }
 
-void Slice::render(Shader &shader, const glm::mat4 view,
-                   const glm::mat4 &projection) {
-  // shader.setMVP(glm::mat4(1.0f), view, projection);
-  shader.setMVP(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(10.0f)),
-                               glm::vec3(-100, 0, -100)),
-                view, projection);
+std::pair<glm::vec2, glm::vec2> Slice::getBounds() const {
+  glm::vec2 min = {std::numeric_limits<float>::max(),
+                   std::numeric_limits<float>::max()};
+  glm::vec2 max = {-std::numeric_limits<float>::max(),
+                   -std::numeric_limits<float>::max()};
+  for (auto &contour : m_perimeters) {
+    for (auto &point : contour.getPoints()) {
+      min.x = std::min(min.x, point.x);
+      min.y = std::min(min.y, point.z);
+      max.x = std::max(max.x, point.x);
+      max.y = std::max(max.y, point.z);
+    }
+  }
+  return {min, max};
+}
+
+void Slice::render(Shader &shader, const glm::vec3 &position,
+                   const float &scale, const glm::mat4 view,
+                   const glm::mat4 &projection) const {
+  auto [min, max] = getBounds();
+  auto center = (min + max) / 2.0f;
+  glm::mat4 model = glm::mat4(1.0f);
+  model = glm::translate(model,
+                         position - scale * glm::vec3(center.x, 0, center.y));
+  model = glm::scale(model, glm::vec3(scale));
+  shader.setMVP(model, view, projection);
+
   for (auto &contour : m_perimeters)
     contour.draw(shader, RED);
   for (auto &contour : m_shells)

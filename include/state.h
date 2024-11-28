@@ -19,6 +19,9 @@ struct State {
   int bedTemp = 50;
   int nozzleTemp = 200;
   float speed = 50.0f;
+  bool sliceViewFocused = false;
+  bool modelViewFocused = false;
+  float sliceScale = 5.0f;
   std::vector<Slice> slices;
   std::vector<PathsD> infill;
   std::vector<PathsD> perimeters;

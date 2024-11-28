@@ -144,8 +144,8 @@ void Model::processVertices(const aiMesh *mesh) {
   for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
     glm::vec3 vector;
     vector.x = mesh->mVertices[i].x;
-    vector.y = mesh->mVertices[i].y;
-    vector.z = mesh->mVertices[i].z;
+    vector.z = mesh->mVertices[i].y;
+    vector.y = mesh->mVertices[i].z;
 
     m_max = glm::max(m_max, vector);
     m_min = glm::min(m_min, vector);
