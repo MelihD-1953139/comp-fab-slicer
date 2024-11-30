@@ -7,6 +7,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 file(GLOB_RECURSE HEADERS "include/*.h")
 
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/res/shaders/base.vert VERTEX_SHADER)
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/res/shaders/base.frag FRAGMENT_SHADER)
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/res/models/plane.obj PLANE_OBJ)
+string(LENGTH "${PLANE_OBJ}" PLANE_OBJ_SIZE)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/resources.h.in ${CMAKE_CURRENT_SOURCE_DIR}/include/resources.h)
+
 add_executable(Slicer ${SOURCES} ${HEADERS})
 target_include_directories(Slicer PUBLIC include)
 

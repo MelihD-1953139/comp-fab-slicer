@@ -6,8 +6,7 @@
 
 class Printer {
 public:
-  Printer(const char *base, const char *slicePath,
-          glm::ivec3 size = {220, 250, 220}, float nozzle = 0.4f);
+  Printer(glm::ivec3 size = {220, 250, 220}, float nozzle = 0.4f);
 
   void setSize(glm::ivec3 size);
   glm::ivec3 getSize() const;

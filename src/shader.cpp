@@ -1,54 +1,32 @@
 #include "shader.h"
 
 #include <glad/gl.h>
-
-#include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <string>
 
-std::string readFile(const char *filePath) {
-  std::string content;
-  std::ifstream filestream(filePath, std::ios::in);
-
-  if (!filestream.is_open()) {
-    std::cout << "Could not read file " << filePath << ". File does not exist."
-              << std::endl;
-    return "";
-  }
-
-  std::string line = "";
-  while (!filestream.eof()) {
-    std::getline(filestream, line);
-    content.append(line + "\n");
-  }
-
-  filestream.close();
-  return content;
-}
-
-Shader::Shader(const char *vertexFilePath, const char *fragmentFilePath) {
+Shader::Shader(const char *vertexShader, const char *fragmentShader) {
   m_id = glCreateProgram();
-  addVertexShader(readFile(vertexFilePath).c_str());
-  addFragmentShader(readFile(fragmentFilePath).c_str());
+  addVertexShader(vertexShader);
+  addFragmentShader(fragmentShader);
   linkProgram();
 }
 
 Shader::~Shader() { glDeleteProgram(m_id); }
 
-bool Shader::addVertexShader(const char *vertexData) {
+bool Shader::addVertexShader(const char *vertexShader) {
   m_vertShaderId = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(m_vertShaderId, 1, &vertexData, nullptr);
+  glShaderSource(m_vertShaderId, 1, &vertexShader, nullptr);
   glCompileShader(m_vertShaderId);
   if (!checkShaderCompileError(m_vertShaderId, "VERTEX"))
     m_hasVertShader = false;
   m_hasVertShader = true;
   return m_hasVertShader;
 }
-bool Shader::addFragmentShader(const char *fragmentData) {
+bool Shader::addFragmentShader(const char *fragmentShader) {
   m_fragShaderId = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(m_fragShaderId, 1, &fragmentData, nullptr);
+  glShaderSource(m_fragShaderId, 1, &fragmentShader, nullptr);
   glCompileShader(m_fragShaderId);
   if (!checkShaderCompileError(m_fragShaderId, "FRAGMENT"))
     m_hasFragShader = false;

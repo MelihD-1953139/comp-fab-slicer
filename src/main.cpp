@@ -2,6 +2,7 @@
 #include "framebuffer.h"
 #include "gcodeWriter.h"
 #include "printer.h"
+#include "resources.h"
 #include "state.h"
 
 #include <Nexus.h>
@@ -69,9 +70,9 @@ int main(int argc, char *argv[]) {
   auto window = std::unique_ptr<Window>(Window::create(WindowProps("Slicer")));
   window->setVSync(true);
 
-  Shader shader(SHADER_VERT_PATH, SHADER_FRAG_PATH);
+  Shader shader(vertexShader, fragmentShader);
 
-  Printer printer("../res/models/plane.obj", "../res/models/plane.obj");
+  Printer printer;
   Model model(g_state.fileBuffer);
   model.setPosition(printer.getCenter() * ZEROY +
                     glm::vec3(0.0f, model.getHeight() / 2.0f, 0.0f));

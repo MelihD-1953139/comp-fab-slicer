@@ -5,6 +5,7 @@
 #include <Nexus.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
+#include <fstream>
 
 #include <assimp/Importer.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -23,6 +24,25 @@ float Triangle::getYmax() const {
 glm::vec3 Triangle::operator[](int i) const { return vertices[i]; }
 
 // ========================= Model =========================
+std::string readFile(const char *filePath) {
+  std::string content;
+  std::ifstream filestream(filePath, std::ios::in);
+
+  if (!filestream.is_open()) {
+    std::cout << "Could not read file " << filePath << ". File does not exist."
+              << std::endl;
+    return "";
+  }
+
+  std::string line = "";
+  while (!filestream.eof()) {
+    std::getline(filestream, line);
+    content.append(line + "\n");
+  }
+
+  filestream.close();
+  return content;
+}
 
 Model::Model(const char *path) : m_scale(1.0f) {
   using namespace Nexus;
@@ -30,6 +50,32 @@ Model::Model(const char *path) : m_scale(1.0f) {
   Assimp::Importer import;
   const aiScene *scene =
       import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+
+  if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+    Logger::error("ASSIMP::{}", import.GetErrorString());
+
+  if (scene->mRootNode->mNumMeshes > 1)
+    Logger::error("Only one mesh per model is supported, {} provided. Only the "
+                  "first mesh will be loaded",
+                  scene->mRootNode->mNumMeshes);
+  if (scene->mRootNode->mNumChildren > 1)
+    Logger::error("Nested meshes is not supported");
+
+  const auto mesh = scene->mMeshes[scene->mRootNode->mChildren[0]->mMeshes[0]];
+
+  processVertices(mesh);
+  processIndices(mesh);
+  processTriangles();
+
+  initOpenGLBuffers();
+}
+
+Model::Model(const char *data, size_t length) : m_scale(1.0f) {
+  using namespace Nexus;
+
+  Assimp::Importer import;
+  const aiScene *scene = import.ReadFileFromMemory(
+      data, length, aiProcess_Triangulate | aiProcess_FlipUVs);
 
   if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     Logger::error("ASSIMP::{}", import.GetErrorString());

@@ -2,6 +2,7 @@
 
 #include <assimp/scene.h>
 
+#include <cstddef>
 #include <glm/glm.hpp>
 #include <vector>
 
@@ -22,6 +23,7 @@ struct Triangle {
 class Model {
 public:
   Model(const char *path);
+  Model(const char *data, size_t length);
 
   void render(Shader &shader, const glm::mat4 &view,
               const glm::mat4 &projection, const glm::vec3 &color);

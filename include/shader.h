@@ -26,13 +26,13 @@ class Shader {
 public:
   GLuint m_id;
 
-  Shader(const char *vertexFilePath, const char *fragmentFilePath);
+  Shader(const char *vertexShader, const char *fragmentShader);
   Shader &operator=(Shader other);
   ~Shader();
 
   void use();
-  bool addVertexShader(const char *vertexData);
-  bool addFragmentShader(const char *fragmentData);
+  bool addVertexShader(const char *vertexShader);
+  bool addFragmentShader(const char *fragmentShader);
   bool linkProgram();
 
   void setBool(const std::string &name, bool value) const;
