@@ -10,8 +10,6 @@
 #include "glm/fwd.hpp"
 #include "shader.h"
 
-using namespace Clipper2Lib;
-
 #define GREEN glm::vec3(0.0f, 1.0f, 0.0f)
 #define YELLOW glm::vec3(1.0f, 1.0f, 0.0f)
 #define BLUE glm::vec3(0.0f, 0.0f, 1.0f)
@@ -29,6 +27,8 @@ private:
 };
 
 class Contour {
+  using PathD = Clipper2Lib::PathD;
+
 public:
   Contour(std::vector<glm::vec3> points);
   Contour(Clipper2Lib::PathD path, bool isClosed = true);
@@ -48,6 +48,8 @@ private:
 };
 
 class Slice {
+  using PathsD = Clipper2Lib::PathsD;
+
 public:
   Slice(std::vector<Line> lineSegments);
   Slice(const PathsD &shells, const PathsD &infill, const PathsD &perimeter);

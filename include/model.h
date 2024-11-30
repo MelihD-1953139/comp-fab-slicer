@@ -1,13 +1,17 @@
 #pragma once
 
-#include <assimp/scene.h>
+#include "shader.h"
+#include "slice.h"
 
+#include <assimp/scene.h>
 #include <cstddef>
 #include <glm/glm.hpp>
 #include <vector>
 
-#include "shader.h"
-#include "slice.h"
+struct Vertex {
+  glm::vec3 position;
+  glm::vec3 normal;
+};
 
 struct Triangle {
   std::array<glm::vec3, 3> vertices;
@@ -47,7 +51,7 @@ public:
   Slice getSlice(double sliceHeight);
 
 private:
-  std::vector<glm::vec3> m_vertices;
+  std::vector<Vertex> m_vertices;
   std::vector<GLuint> m_indices;
   std::vector<Triangle> m_triangles;
 

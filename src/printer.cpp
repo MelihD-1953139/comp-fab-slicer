@@ -1,14 +1,15 @@
 #include "printer.h"
-#include "glm/gtc/type_ptr.hpp"
 #include "resources.h"
 
 #include <Nexus.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 Printer::Printer(glm::ivec3 size, float nozzle)
     : m_base(planeOBJ, planeOBJSize), m_slicePlane(planeOBJ, planeOBJSize),
       m_size(size), m_nozzle(nozzle) {
   setSize(size);
+  m_slicePlane.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
 }
 
 void Printer::setSize(glm::ivec3 size) {

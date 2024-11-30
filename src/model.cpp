@@ -5,6 +5,7 @@
 #include <Nexus.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
+#include <cstddef>
 #include <fstream>
 
 #include <assimp/Importer.hpp>
@@ -115,11 +116,13 @@ float Model::getHeight() {
   auto model = getModelMatrix();
   m_max = glm::vec3(-std::numeric_limits<float>::max());
   m_min = glm::vec3(std::numeric_limits<float>::max());
+
   for (auto &vertex : m_vertices) {
-    auto transformed = model * glm::vec4(vertex, 1.0f);
+    auto transformed = model * glm::vec4(vertex.position, 1.0f);
     m_max = glm::max(m_max, glm::vec3(transformed));
     m_min = glm::min(m_min, glm::vec3(transformed));
   }
+
   return m_max.y - m_min.y;
 }
 
@@ -169,16 +172,21 @@ void Model::initOpenGLBuffers() {
   glBindVertexArray(m_VAO);
 
   glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-  glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(glm::vec3),
-               &m_vertices[0], GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(Vertex),
+               m_vertices.data(), GL_STATIC_DRAW);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_EBO);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(GLuint),
-               &m_indices[0], GL_STATIC_DRAW);
+               m_indices.data(), GL_STATIC_DRAW);
 
   // Pos
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                        (void *)offsetof(Vertex, position));
   glEnableVertexAttribArray(0);
+  // Normal
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                        (void *)offsetof(Vertex, normal));
+  glEnableVertexAttribArray(1);
 
   glBindVertexArray(0);
 }
@@ -190,17 +198,24 @@ void Model::processVertices(const aiMesh *mesh) {
   for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
     glm::vec3 vector;
     vector.x = mesh->mVertices[i].x;
-    vector.z = mesh->mVertices[i].y;
     vector.y = mesh->mVertices[i].z;
+    vector.z = mesh->mVertices[i].y;
+
+    glm::vec3 normal;
+    if (mesh->mNormals) {
+      normal.x = mesh->mNormals[i].x;
+      normal.y = mesh->mNormals[i].z;
+      normal.z = mesh->mNormals[i].y;
+    }
 
     m_max = glm::max(m_max, vector);
     m_min = glm::min(m_min, vector);
-    m_vertices.push_back(vector);
+    m_vertices.push_back(Vertex(vector, normal));
   }
 
   m_center = (m_max + m_min) / 2.0f;
   for (auto &vertex : m_vertices)
-    vertex -= m_center;
+    vertex.position -= m_center;
 }
 
 void Model::processIndices(const aiMesh *mesh) {
@@ -214,9 +229,9 @@ void Model::processIndices(const aiMesh *mesh) {
 
 void Model::processTriangles() {
   for (size_t i = 0; i < m_indices.size(); i += 3) {
-    m_triangles.emplace_back(m_vertices[m_indices[i]],
-                             m_vertices[m_indices[i + 1]],
-                             m_vertices[m_indices[i + 2]]);
+    m_triangles.emplace_back(m_vertices[m_indices[i]].position,
+                             m_vertices[m_indices[i + 1]].position,
+                             m_vertices[m_indices[i + 2]].position);
   }
 }
 

@@ -138,6 +138,8 @@ int main(int argc, char *argv[]) {
   // Main loop
   window->whileOpen([&]() {
     ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
+    shader.use();
+    shader.setVec3("lightPos", camera.getPosition());
 
     if (g_state.showDemoWindow)
       ImGui::ShowDemoWindow();
@@ -266,12 +268,14 @@ int main(int argc, char *argv[]) {
           viewBuffer.resize(width, height);
           viewBuffer.clear();
 
+          shader.setBool("useShading", false);
           printer.render(shader, view, projection, glm::vec3(0.7f, 0.7f, 0.7f),
                          glm::vec3(0.0f, 0.0f, 1.0f), g_state.showSlicePlane);
           if (g_state.dropDown) {
             auto pos = model.getPosition();
             model.setPosition({pos.x, model.getHeight() / 2, pos.z});
           }
+          shader.setBool("useShading", true);
           model.render(shader, view, projection, glm::vec3(1.0f, 0.0f, 0.0f));
         }
         viewBuffer.unbind();
@@ -297,6 +301,7 @@ int main(int argc, char *argv[]) {
 
           sliceBuffer.resize(width, height);
           sliceBuffer.clear();
+          shader.setBool("useShading", false);
 
           g_state.slices[g_state.sliceIndex].render(
               shader, position, g_state.sliceScale, view, projection);

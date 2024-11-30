@@ -1,11 +1,11 @@
 #pragma once
 
-#include "glm/glm.hpp"
 #include "slice.h"
 #include <clipper2/clipper.h>
 #include <vector>
 
 struct State {
+  using PathsD = Clipper2Lib::PathsD;
   bool showDemoWindow = false;
   glm::ivec2 windowSize{1280, 720};
   float layerHeight = 0.2f;
