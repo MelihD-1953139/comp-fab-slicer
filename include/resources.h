@@ -31,6 +31,7 @@ uniform bool useShading;
 
 out vec4 FragColor;
 
+
 void main()
 {
 	if (useShading){

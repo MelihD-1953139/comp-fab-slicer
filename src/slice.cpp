@@ -119,13 +119,9 @@ Slice::Slice(std::vector<Line> lineSegments) {
   }
 }
 
-Slice::Slice(const PathsD &shells, const PathsD &infill,
-             const PathsD &perimeters) {
+Slice::Slice(const PathsD &shells, const PathsD &infill) {
   for (auto &path : shells) {
     m_shells.emplace_back(path);
-  }
-  for (auto &path : perimeters) {
-    m_perimeters.emplace_back(path);
   }
   for (auto &path : infill) {
     m_infill.emplace_back(path, false);
@@ -137,7 +133,7 @@ std::pair<glm::vec2, glm::vec2> Slice::getBounds() const {
                    std::numeric_limits<float>::max()};
   glm::vec2 max = {-std::numeric_limits<float>::max(),
                    -std::numeric_limits<float>::max()};
-  for (auto &contour : m_perimeters) {
+  for (auto &contour : m_shells) {
     for (auto &point : contour.getPoints()) {
       min.x = std::min(min.x, point.x);
       min.y = std::min(min.y, point.z);
@@ -159,10 +155,10 @@ void Slice::render(Shader &shader, const glm::vec3 &position,
   model = glm::scale(model, glm::vec3(scale));
   shader.setMVP(model, view, projection);
 
-  for (auto &contour : m_perimeters)
-    contour.draw(shader, RED);
-  for (auto &contour : m_shells)
-    contour.draw(shader, GREEN);
+  m_shells.front().draw(shader, RED);
+
+  for (auto it = m_shells.rbegin(); it != m_shells.rend() - 1; ++it)
+    it->draw(shader, GREEN);
 
   for (auto &contour : m_infill)
     contour.draw(shader, ORANGE);

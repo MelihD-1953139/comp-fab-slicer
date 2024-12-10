@@ -61,6 +61,15 @@ PathsD generateSparseRectangleInfill(float density, PointD min, PointD max) {
   return infill;
 }
 
+void printMatrix(const glm::mat4 &matrix) {
+  for (int i = 0; i < 4; ++i) {
+    for (int j = 0; j < 4; ++j) {
+      std::cout << matrix[j][i] << " ";
+    }
+    std::cout << std::endl;
+  }
+}
+
 int main(int argc, char *argv[]) {
   Logger::setLevel(LogLevel::Trace);
 
@@ -207,17 +216,16 @@ int main(int argc, char *argv[]) {
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 
         g_state.slices.clear();
-        for (int i = 1; i < g_state.maxSliceIndex; ++i) {
+        for (int i = 1; i < g_state.maxSliceIndex - 1; ++i) {
           auto slice = model.getSlice(g_state.layerHeight * i);
           auto perimeter = Union(slice, FillRule::EvenOdd);
 
-          perimeter = InflatePaths(perimeter, -printer.getNozzle() / 2.0f,
-                                   JoinType::Miter, EndType::Polygon);
-
           PathsD shells;
-          PathsD lastShell = perimeter;
-          for (int j = 1; j < g_state.shellCount; ++j) {
-            lastShell = InflatePaths(perimeter, -printer.getNozzle() * j,
+          PathsD lastShell;
+          for (int j = 0; j < g_state.shellCount; ++j) {
+            lastShell = InflatePaths(perimeter,
+                                     -printer.getNozzle() / 2.0f -
+                                         printer.getNozzle() * j,
                                      JoinType::Miter, EndType::Polygon);
             shells.append_range(lastShell);
           }
@@ -227,13 +235,13 @@ int main(int argc, char *argv[]) {
               {printer.getSize().x, printer.getSize().z});
 
           ClipperD clipper;
-          clipper.AddClip(lastShell);
+          clipper.AddClip(lastShell.empty() ? perimeter : lastShell);
           clipper.AddOpenSubject(infillRaw);
           PathsD infillClosed, infillOpen;
           clipper.Execute(ClipType::Intersection, FillRule::EvenOdd,
                           infillClosed, infillOpen);
 
-          g_state.slices.emplace_back(shells, infillOpen, perimeter);
+          g_state.slices.emplace_back(shells, infillOpen);
         }
       }
 

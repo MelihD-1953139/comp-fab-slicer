@@ -74,13 +74,17 @@ void GcodeWriter::WritePath(const Contour &contour) {
 }
 
 void GcodeWriter::WriteSlice(const Slice &slice) {
-  m_file << ";TYPE:WALL-INNER\n";
-  for (const Contour &shell : slice.getShells())
-    WritePath(shell);
+  auto shells = slice.getShells();
+  if (shells.empty())
+    return;
+
+  for (auto it = shells.rbegin(); it != shells.rend() - 1; ++it) {
+    m_file << ";TYPE:WALL-INNER\n";
+    WritePath(*it);
+  }
 
   m_file << ";TYPE:WALL-OUTER\n";
-  for (const Contour &perimeter : slice.getPerimeters())
-    WritePath(perimeter);
+  WritePath(shells.front());
 
   m_file << ";TYPE:FILL\n";
   for (const Contour &infill : slice.getInfill())

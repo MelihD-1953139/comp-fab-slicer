@@ -52,7 +52,7 @@ class Slice {
 
 public:
   Slice(std::vector<Line> lineSegments);
-  Slice(const PathsD &shells, const PathsD &infill, const PathsD &perimeter);
+  Slice(const PathsD &shells, const PathsD &infill);
   std::pair<glm::vec2, glm::vec2> getBounds() const;
 
   void render(Shader &shader, const glm::vec3 &position, const float &scale,
@@ -61,7 +61,6 @@ public:
   operator Clipper2Lib::PathsD() const;
 
   const std::vector<Contour> &getShells() const { return m_shells; }
-  const std::vector<Contour> &getPerimeters() const { return m_perimeters; }
   const std::vector<Contour> &getInfill() const { return m_infill; }
 
 private:
@@ -69,5 +68,4 @@ private:
   float currentEpsilon = EPSILON;
   std::vector<Contour> m_shells;
   std::vector<Contour> m_infill;
-  std::vector<Contour> m_perimeters;
 };
