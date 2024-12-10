@@ -17,9 +17,8 @@
 #define ORANGE glm::vec3(1.0f, 0.65f, 0.0f)
 
 struct Line {
-  glm::vec3 p1, p2;
+  Clipper2Lib::PointD p1, p2;
   void setNextPoint(glm::vec3 point);
-  Line operator*(glm::vec3 scale);
   bool operator==(const Line &other) const;
 
 private:
@@ -28,18 +27,19 @@ private:
 
 class Contour {
   using PathD = Clipper2Lib::PathD;
+  using PointD = Clipper2Lib::PointD;
 
 public:
   Contour(std::vector<glm::vec3> points);
-  Contour(Clipper2Lib::PathD path, bool isClosed = true);
+  Contour(PathD path, bool isClosed = true);
   void draw(Shader &shader, glm::vec3 color) const;
-  const std::vector<glm::vec3> &getPoints() const { return m_points; }
-  std::vector<glm::vec3> getPoints() { return m_points; }
+  const std::vector<PointD> &getPoints() const { return m_points; }
+  std::vector<PointD> getPoints() { return m_points; }
 
   operator PathD() const;
 
 private:
-  std::vector<glm::vec3> m_points;
+  std::vector<PointD> m_points;
 
   unsigned int m_VAO, m_VBO;
 
@@ -55,10 +55,10 @@ public:
   Slice(const PathsD &shells, const PathsD &infill);
   std::pair<glm::vec2, glm::vec2> getBounds() const;
 
-  void render(Shader &shader, const glm::vec3 &position, const float &scale,
-              const glm::mat4 view, const glm::mat4 &projection) const;
+  void render(Shader &shader, const glm::vec3 &position,
+              const float &scale) const;
 
-  operator Clipper2Lib::PathsD() const;
+  operator PathsD() const;
 
   const std::vector<Contour> &getShells() const { return m_shells; }
   const std::vector<Contour> &getInfill() const { return m_infill; }

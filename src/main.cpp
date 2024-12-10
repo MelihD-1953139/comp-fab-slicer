@@ -79,7 +79,8 @@ int main(int argc, char *argv[]) {
   auto window = std::unique_ptr<Window>(Window::create(WindowProps("Slicer")));
   window->setVSync(true);
 
-  Shader shader(vertexShader, fragmentShader);
+  Shader previewShader(baseVertexShader, baseFragmentShader);
+  Shader sliceShader(sliceVertexShader, sliceFragmentShader);
 
   Printer printer;
   Model model(g_state.fileBuffer);
@@ -147,8 +148,6 @@ int main(int argc, char *argv[]) {
   // Main loop
   window->whileOpen([&]() {
     ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
-    shader.use();
-    shader.setVec3("lightPos", camera.getPosition());
 
     if (g_state.showDemoWindow)
       ImGui::ShowDemoWindow();
@@ -214,7 +213,6 @@ int main(int argc, char *argv[]) {
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-
         g_state.slices.clear();
         for (int i = 1; i < g_state.maxSliceIndex - 1; ++i) {
           auto slice = model.getSlice(g_state.layerHeight * i);
@@ -275,16 +273,19 @@ int main(int argc, char *argv[]) {
         {
           viewBuffer.resize(width, height);
           viewBuffer.clear();
-
-          shader.setBool("useShading", false);
-          printer.render(shader, view, projection, glm::vec3(0.7f, 0.7f, 0.7f),
+          previewShader.use();
+          previewShader.setVec3("lightPos", camera.getPosition());
+          previewShader.setBool("useShading", false);
+          printer.render(previewShader, view, projection,
+                         glm::vec3(0.7f, 0.7f, 0.7f),
                          glm::vec3(0.0f, 0.0f, 1.0f), g_state.showSlicePlane);
           if (g_state.dropDown) {
             auto pos = model.getPosition();
             model.setPosition({pos.x, model.getHeight() / 2, pos.z});
           }
-          shader.setBool("useShading", true);
-          model.render(shader, view, projection, glm::vec3(1.0f, 0.0f, 0.0f));
+          previewShader.setBool("useShading", true);
+          model.render(previewShader, view, projection,
+                       glm::vec3(1.0f, 0.0f, 0.0f));
         }
         viewBuffer.unbind();
 
@@ -303,16 +304,21 @@ int main(int argc, char *argv[]) {
           const int width = ImGui::GetContentRegionAvail().x;
           const int height = ImGui::GetContentRegionAvail().y;
 
+          sliceShader.use();
+
           auto position = printer.getCenter() * ZEROY;
           auto view = topDownCamera.getViewMatrix(position);
           auto projection = topDownCamera.getProjectionMatrix(width, height);
 
+          sliceShader.setMat4("view", view);
+          sliceShader.setMat4("projection", projection);
+
           sliceBuffer.resize(width, height);
           sliceBuffer.clear();
-          shader.setBool("useShading", false);
+          sliceShader.setBool("useShading", false);
 
-          g_state.slices[g_state.sliceIndex].render(
-              shader, position, g_state.sliceScale, view, projection);
+          g_state.slices[g_state.sliceIndex].render(sliceShader, position,
+                                                    g_state.sliceScale);
         }
         sliceBuffer.unbind();
 

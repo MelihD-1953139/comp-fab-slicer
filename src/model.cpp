@@ -158,7 +158,7 @@ Slice Model::getSlice(double sliceHeight) {
       segment.setNextPoint((v1 + t * (v2 - v1)));
     }
     if (segment.p1 != segment.p2)
-      lineSegments.push_back(segment * glm::vec3(1.0f, 0.0f, 1.0f));
+      lineSegments.push_back(segment);
   }
 
   return {lineSegments};

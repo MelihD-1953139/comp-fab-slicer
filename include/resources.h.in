@@ -2,7 +2,9 @@
 
 #include <cstdlib>
 
-static const char *vertexShader = R"(@VERTEX_SHADER@)";
-static const char *fragmentShader = R"(@FRAGMENT_SHADER@)";
+static const char *baseVertexShader = R"(@BASE_VERTEX_SHADER@)";
+static const char *sliceVertexShader = R"(@SLICE_VERTEX_SHADER@)";
+static const char *baseFragmentShader = R"(@BASE_FRAGMENT_SHADER@)";
+static const char *sliceFragmentShader = R"(@SLICE_FRAGMENT_SHADER@)";
 static const char *planeOBJ = R"(@PLANE_OBJ@)";
 static const size_t planeOBJSize = atoi("@PLANE_OBJ_SIZE@");

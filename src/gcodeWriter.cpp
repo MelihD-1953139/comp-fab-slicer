@@ -1,4 +1,5 @@
 #include "gcodeWriter.h"
+#include "utils.h"
 
 std::ofstream GcodeWriter::m_file;
 float GcodeWriter::extrusion;
@@ -63,12 +64,12 @@ void GcodeWriter::WritePath(const Contour &contour) {
   if (points.empty())
     return;
 
-  m_file << "G0 F6000 X" << points[0].x << " Y" << points[0].z << " Z"
+  m_file << "G0 F6000 X" << points[0].x << " Y" << points[0].y << " Z"
          << layerHeight << "\n";
   for (size_t i = 1; i < points.size(); i++) {
     extrusion +=
-        layerThickness * nozzle * glm::distance(points[i - 1], points[i]) / fa;
-    m_file << "G1 F" << speed << " X" << points[i].x << " Y" << points[i].z
+        layerThickness * nozzle * distance(points[i - 1], points[i]) / fa;
+    m_file << "G1 F" << speed << " X" << points[i].x << " Y" << points[i].y
            << " E" << extrusion << "\n";
   }
 }
