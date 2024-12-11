@@ -4,7 +4,6 @@
 #include "printer.h"
 #include "resources.h"
 #include "state.h"
-#include "utils.h"
 
 #include <Nexus.h>
 #include <Nexus/Log.h>
@@ -75,7 +74,7 @@ int main(int argc, char *argv[]) {
   Logger::setLevel(LogLevel::Trace);
 
   if (argc >= 2)
-    strcpy(g_state.fileBuffer, argv[1]);
+    strcpy(g_state.fileSettings.inputFile, argv[1]);
 
   auto window = std::unique_ptr<Window>(Window::create(WindowProps("Slicer")));
   window->setVSync(true);
@@ -84,18 +83,20 @@ int main(int argc, char *argv[]) {
   Shader sliceShader(sliceVertexShader, sliceFragmentShader);
 
   Printer printer;
-  Model model(g_state.fileBuffer);
+  Model model(g_state.fileSettings.inputFile);
   model.setPosition(printer.getCenter() * ZEROY +
                     glm::vec3(0.0f, model.getHeight() / 2.0f, 0.0f));
-  g_state.maxSliceIndex =
-      std::ceil<int>(model.getHeight() / g_state.layerHeight);
+  g_state.sliceSettings.maxSliceIndex =
+      std::ceil<int>(model.getHeight() / g_state.sliceSettings.layerHeight);
 
   PerspectiveCamera camera(0.0f, 45.0f, 300.0f);
   OrthographicCamera topDownCamera(0.0f, 0.0f, printer.getSize().y);
 
-  printer.setSliceHeight(g_state.layerHeight * g_state.sliceIndex);
+  printer.setSliceHeight(g_state.sliceSettings.layerHeight *
+                         g_state.sliceSettings.sliceIndex);
 
-  Framebuffer viewBuffer(g_state.windowSize.x, g_state.windowSize.y);
+  Framebuffer viewBuffer(g_state.windowSettings.windowSize.x,
+                         g_state.windowSettings.windowSize.y);
   Framebuffer sliceBuffer(printer.getSize().x, printer.getSize().z);
 
   // Callbacks
@@ -104,7 +105,7 @@ int main(int argc, char *argv[]) {
         if (action == GLFW_RELEASE)
           return false;
 
-        if (g_state.modelViewFocused) {
+        if (g_state.windowSettings.modelViewFocused) {
           switch (key) {
           case GLFW_KEY_W:
             camera.orbit(0.0f, -1.0f);
@@ -125,24 +126,24 @@ int main(int argc, char *argv[]) {
             camera.offsetDistanceFromTarget(5.0f);
             break;
           }
-        } else if (g_state.sliceViewFocused) {
+        } else if (g_state.windowSettings.sliceViewFocused) {
           switch (key) {
           case GLFW_KEY_W:
           case GLFW_KEY_UP:
           case GLFW_KEY_KP_ADD:
-            g_state.sliceScale += 0.5f;
+            g_state.windowSettings.sliceScale += 0.5f;
             break;
           case GLFW_KEY_S:
           case GLFW_KEY_DOWN:
           case GLFW_KEY_KP_SUBTRACT:
-            g_state.sliceScale -= 0.5f;
+            g_state.windowSettings.sliceScale -= 0.5f;
             break;
           }
         }
         return false;
       })
       ->onResize([&](int width, int height) -> bool {
-        g_state.windowSize = {width, height};
+        g_state.windowSettings.windowSize = {width, height};
         return false;
       });
 
@@ -150,7 +151,7 @@ int main(int argc, char *argv[]) {
   window->whileOpen([&]() {
     ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
 
-    if (g_state.showDemoWindow)
+    if (g_state.windowSettings.showDemoWindow)
       ImGui::ShowDemoWindow();
 
     ImGui::Begin("Control Panel");
@@ -162,26 +163,26 @@ int main(int argc, char *argv[]) {
         ImGui::InputFloat("Printer Nozel", printer.getNozzlePtr(), 0.0f, 0.0f,
                           "%.2f mm");
 
-        ImGui::InputInt("Bed Temp", &g_state.bedTemp);
-        ImGui::InputInt("Nozzle Temp", &g_state.nozzleTemp);
-        ImGui::InputFloat("Speed", &g_state.printSpeed, 0.0f, 0.0f,
-                          "%.1f mm/s");
-        ImGui::InputFloat("Infill speed", &g_state.infillSpeed, 0.0f, 0.0f,
-                          "%.1f mm/s");
+        ImGui::InputInt("Bed Temp", &g_state.printerSettings.bedTemp);
+        ImGui::InputInt("Nozzle Temp", &g_state.printerSettings.nozzleTemp);
+        ImGui::InputFloat("Speed", &g_state.printerSettings.printSpeed, 0.0f,
+                          0.0f, "%.1f mm/s");
+        ImGui::InputFloat("Infill speed", &g_state.printerSettings.infillSpeed,
+                          0.0f, 0.0f, "%.1f mm/s");
       }
 
       if (ImGui::CollapsingHeader("Object settings")) {
-        g_state.maxSliceIndex =
-            std::ceil<int>(model.getHeight() / g_state.layerHeight);
+        g_state.sliceSettings.maxSliceIndex = std::ceil<int>(
+            model.getHeight() / g_state.sliceSettings.layerHeight);
 
-        ImGui::InputText("Model file", g_state.fileBuffer,
-                         IM_ARRAYSIZE(g_state.fileBuffer));
+        ImGui::InputText("Model file", g_state.fileSettings.inputFile,
+                         IM_ARRAYSIZE(g_state.fileSettings.inputFile));
         if (ImGui::Button("Load")) {
-          model = Model(g_state.fileBuffer);
+          model = Model(g_state.fileSettings.inputFile);
           model.setPosition(printer.getCenter() * ZEROY);
-          g_state.maxSliceIndex = static_cast<int>(
-              std::ceil(model.getHeight() / g_state.layerHeight));
-          g_state.sliceIndex = 1;
+          g_state.sliceSettings.maxSliceIndex = static_cast<int>(
+              std::ceil(model.getHeight() / g_state.sliceSettings.layerHeight));
+          g_state.sliceSettings.sliceIndex = 1;
           g_state.slices.clear();
         }
 
@@ -190,45 +191,51 @@ int main(int argc, char *argv[]) {
         ImGui::DragFloat3("Scale", model.getScalePtr(), 0, 10);
         ImGui::DragFloat3("Rotation", model.getRotationPtr(), -180, 180);
 
-        ImGui::Checkbox("Drop model down", &g_state.dropDown);
+        ImGui::Checkbox("Drop model down", &g_state.objectSettings.dropDown);
       }
 
       if (ImGui::CollapsingHeader("Slice settings")) {
-        if (ImGui::SliderInt("Slice Index", &g_state.sliceIndex, 1,
-                             g_state.maxSliceIndex - 3)) {
-          printer.setSliceHeight(g_state.sliceIndex * g_state.layerHeight);
+        if (ImGui::SliderInt("Slice Index", &g_state.sliceSettings.sliceIndex,
+                             1, g_state.sliceSettings.maxSliceIndex - 3)) {
+          printer.setSliceHeight(g_state.sliceSettings.sliceIndex *
+                                 g_state.sliceSettings.layerHeight);
         }
 
-        ImGui::Checkbox("Show Slice Plane", &g_state.showSlicePlane);
+        ImGui::Checkbox("Show Slice Plane",
+                        &g_state.windowSettings.showSlicePlane);
 
-        if (ImGui::InputFloat("Layer Height", &g_state.layerHeight, 0.0f, 0.0f,
+        if (ImGui::InputFloat("Layer Height",
+                              &g_state.sliceSettings.layerHeight, 0.0f, 0.0f,
                               "%.2f mm")) {
-          g_state.layerHeight =
-              std::clamp(g_state.layerHeight, 0.0f, printer.getNozzle() * 0.8f);
+          g_state.sliceSettings.layerHeight =
+              std::clamp(g_state.sliceSettings.layerHeight, 0.0f,
+                         printer.getNozzle() * 0.8f);
         }
 
-        if (ImGui::InputInt("Shell count", &g_state.shellCount)) {
-          g_state.shellCount = std::clamp(g_state.shellCount, 1, 10);
+        if (ImGui::InputInt("Shell count", &g_state.sliceSettings.shellCount)) {
+          g_state.sliceSettings.shellCount =
+              std::clamp(g_state.sliceSettings.shellCount, 1, 10);
         }
 
-        if (ImGui::InputFloat("Infill Density", &g_state.infillDensity, 0.0f,
-                              0.0f, "%.2f %%")) {
-          g_state.infillDensity =
-              std::clamp(g_state.infillDensity, 0.0f, 100.0f);
+        if (ImGui::InputFloat("Infill Density",
+                              &g_state.sliceSettings.infillDensity, 0.0f, 0.0f,
+                              "%.2f %%")) {
+          g_state.sliceSettings.infillDensity =
+              std::clamp(g_state.sliceSettings.infillDensity, 0.0f, 100.0f);
         }
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         g_state.slices.clear();
-        for (int i = 1; i < g_state.maxSliceIndex - 1; ++i) {
+        for (int i = 1; i < g_state.sliceSettings.maxSliceIndex - 1; ++i) {
           Logger::debug("Slicing layer {}", i);
-          auto slice = model.getSlice(g_state.layerHeight * i);
+          auto slice = model.getSlice(g_state.sliceSettings.layerHeight * i);
           auto perimeter = Union(slice.getShells().front(), FillRule::EvenOdd);
           // debugPrintPathsD(perimeter);
 
           std::vector<PathsD> shells;
           PathsD lastShell;
-          for (int j = 0; j < g_state.shellCount; ++j) {
+          for (int j = 0; j < g_state.sliceSettings.shellCount; ++j) {
             lastShell = InflatePaths(perimeter,
                                      -printer.getNozzle() / 2.0f -
                                          printer.getNozzle() * j,
@@ -237,7 +244,7 @@ int main(int argc, char *argv[]) {
           }
 
           PathsD infillRaw = generateSparseRectangleInfill(
-              g_state.infillDensity / 100.0f, {0, 0},
+              g_state.sliceSettings.infillDensity / 100.0f, {0, 0},
               {printer.getSize().x, printer.getSize().z});
 
           ClipperD clipper;
@@ -263,7 +270,7 @@ int main(int argc, char *argv[]) {
     {
       ImGui::Begin("3D View");
       {
-        g_state.modelViewFocused = ImGui::IsWindowFocused();
+        g_state.windowSettings.modelViewFocused = ImGui::IsWindowFocused();
 
         const int width = ImGui::GetContentRegionAvail().x;
         const int height = ImGui::GetContentRegionAvail().y;
@@ -279,8 +286,9 @@ int main(int argc, char *argv[]) {
           previewShader.setBool("useShading", false);
           printer.render(previewShader, view, projection,
                          glm::vec3(0.7f, 0.7f, 0.7f),
-                         glm::vec3(0.0f, 0.0f, 1.0f), g_state.showSlicePlane);
-          if (g_state.dropDown) {
+                         glm::vec3(0.0f, 0.0f, 1.0f),
+                         g_state.windowSettings.showSlicePlane);
+          if (g_state.objectSettings.dropDown) {
             auto pos = model.getPosition();
             model.setPosition({pos.x, model.getHeight() / 2, pos.z});
           }
@@ -298,7 +306,7 @@ int main(int argc, char *argv[]) {
 
       ImGui::Begin("Slice View");
       {
-        g_state.sliceViewFocused = ImGui::IsWindowFocused();
+        g_state.windowSettings.sliceViewFocused = ImGui::IsWindowFocused();
 
         sliceBuffer.bind();
         if (!g_state.slices.empty()) {
@@ -318,8 +326,8 @@ int main(int argc, char *argv[]) {
           sliceBuffer.clear();
           sliceShader.setBool("useShading", false);
 
-          g_state.slices[g_state.sliceIndex].render(sliceShader, position,
-                                                    g_state.sliceScale);
+          g_state.slices[g_state.sliceSettings.sliceIndex].render(
+              sliceShader, position, g_state.windowSettings.sliceScale);
         }
         sliceBuffer.unbind();
 
