@@ -1,18 +1,21 @@
 #include "slice.h"
-#include "glm/fwd.hpp"
+#include "utils.h"
 
 #include <Nexus.h>
+#include <clipper2/clipper.core.h>
 #include <clipper2/clipper.h>
 #include <cstdlib>
+#include <glm/fwd.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <sys/types.h>
 
 using namespace Clipper2Lib;
 
-void Line::setNextPoint(glm::vec3 point) {
+void Line::setNextPoint(Clipper2Lib::PointD point) {
   if (firstPointSet) {
-    p2 = {point.x, point.z};
+    p2 = point;
   } else {
-    p1 = {point.x, point.z};
+    p1 = point;
     firstPointSet = true;
   }
 }
@@ -22,101 +25,62 @@ bool Line::operator==(const Line &other) const {
          (p1 == other.p2 && p2 == other.p1);
 }
 
-Contour::Contour(std::vector<glm::vec3> points) {
-  for (auto &point : points) {
-    m_points.emplace_back(point.x, point.z);
-  }
-  initOpenGLBuffers();
-}
-
-Contour::Contour(PathD path, bool isClosed) : m_points(path) {
-  if (isClosed)
-    m_points.push_back(m_points.front());
-  initOpenGLBuffers();
-}
-
-void Contour::draw(Shader &shader, glm::vec3 color) const {
-  shader.use();
-  shader.setVec3("color", color);
-
-  glBindVertexArray(m_VAO);
-  glDrawArrays(GL_LINE_STRIP, 0, m_points.size());
-  glBindVertexArray(0);
-}
-
-Contour::operator PathD() const { return m_points; }
-
-void Contour::initOpenGLBuffers() {
-  glGenVertexArrays(1, &m_VAO);
-  glGenBuffers(1, &m_VBO);
-
-  glBindVertexArray(m_VAO);
-
-  glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-  glBufferData(GL_ARRAY_BUFFER, m_points.size() * sizeof(PointD),
-               m_points.data(), GL_STATIC_DRAW);
-
-  glVertexAttribPointer(0, 2, GL_DOUBLE, GL_FALSE, sizeof(PointD), (void *)0);
-  glEnableVertexAttribArray(0);
-
-  glBindVertexArray(0);
-}
-
 Slice::Slice(std::vector<Line> lineSegments) {
-  std::vector<glm::vec3> points;
+  PathsD perimeter;
+  PathD path;
   while (!lineSegments.empty()) {
-    if (points.empty()) {
-      points.push_back({lineSegments[0].p1.x, 0, lineSegments[0].p1.y});
-      points.push_back({lineSegments[0].p2.x, 0, lineSegments[0].p2.y});
+    if (path.empty()) {
+      path.push_back(lineSegments[0].p1);
+      path.push_back(lineSegments[0].p2);
       lineSegments.erase(lineSegments.begin());
     }
 
-    auto &firstPoint = points.front();
-    size_t currentPointsCount = points.size();
+    auto &firstPoint = path.front();
+    size_t currentPointsCount = path.size();
 
     for (int i = 0; i < lineSegments.size(); ++i) {
       auto line = lineSegments[i];
-      if (glm::distance(points.back(), {line.p1.x, 0, line.p1.y}) <
-          currentEpsilon) {
-        if (glm::distance(firstPoint, {line.p2.x, 0, line.p2.y}) <
-            currentEpsilon) {
-          points.push_back(firstPoint);
-          m_shells.emplace_back(points);
-          points.clear();
+      if (distance(path.back(), line.p1) < currentEpsilon) {
+        if (distance(firstPoint, line.p2) < currentEpsilon) {
+          path.push_back(firstPoint);
+          perimeter.emplace_back(path);
+          path.clear();
           lineSegments.erase(lineSegments.begin() + i);
           currentEpsilon = EPSILON;
         } else {
-          points.push_back({line.p2.x, 0, line.p2.y});
+          path.push_back(line.p2);
           lineSegments.erase(lineSegments.begin() + i);
         }
         break;
-      } else if (glm::distance(points.back(), {line.p2.x, 0, line.p2.y}) <
-                 currentEpsilon) {
-        if (glm::distance(firstPoint, {line.p1.x, 0, line.p1.y}) <
-            currentEpsilon) {
-          points.push_back(firstPoint);
-          m_shells.emplace_back(points);
-          points.clear();
+      } else if (distance(path.back(), line.p2) < currentEpsilon) {
+        if (distance(firstPoint, line.p1) < currentEpsilon) {
+          path.push_back(firstPoint);
+          perimeter.emplace_back(SimplifyPath(path, currentEpsilon));
+          path.clear();
           lineSegments.erase(lineSegments.begin() + i);
           currentEpsilon = EPSILON;
         } else {
-          points.push_back({line.p1.x, 0, line.p1.y});
+          path.push_back(line.p1);
           lineSegments.erase(lineSegments.begin() + i);
         }
         break;
       }
     }
-    if (currentPointsCount == points.size())
+    if (currentPointsCount == path.size())
       currentEpsilon *= 10;
   }
+  m_shells.push_back(perimeter);
 }
 
-Slice::Slice(const PathsD &shells, const PathsD &infill) {
-  for (auto &path : shells) {
-    m_shells.emplace_back(path);
+Slice::Slice(const std::vector<PathsD> &shells,
+             const std::vector<PathsD> &fill) {
+  for (auto &paths : shells) {
+    auto inserted = m_shells.emplace_back(closePathsD(paths));
+    initOpenGLBuffer(inserted);
   }
-  for (auto &path : infill) {
-    m_infill.emplace_back(path, false);
+  for (auto &paths : fill) {
+    m_infill.emplace_back(paths);
+    initOpenGLBuffer(paths);
   }
 }
 
@@ -125,8 +89,8 @@ std::pair<glm::vec2, glm::vec2> Slice::getBounds() const {
                    std::numeric_limits<double>::max()};
   glm::vec2 max = {-std::numeric_limits<double>::max(),
                    -std::numeric_limits<double>::max()};
-  for (auto &contour : m_shells) {
-    for (auto &point : contour.getPoints()) {
+  for (auto &path : m_shells.front()) {
+    for (auto &point : path) {
       min.x = std::min(min.x, float(point.x));
       min.y = std::min(min.y, float(point.y));
       max.x = std::max(max.x, float(point.x));
@@ -146,19 +110,50 @@ void Slice::render(Shader &shader, const glm::vec3 &position,
   model = glm::scale(model, glm::vec3(scale));
   shader.setMat4("model", model);
 
-  m_shells.front().draw(shader, RED);
+  size_t vaoIndex = 0;
+
+  drawPaths(m_shells.front(), shader, RED, vaoIndex);
 
   for (auto it = m_shells.rbegin(); it != m_shells.rend() - 1; ++it)
-    it->draw(shader, GREEN);
+    drawPaths(*it, shader, GREEN, vaoIndex);
 
-  for (auto &contour : m_infill)
-    contour.draw(shader, ORANGE);
+  for (auto &fill : m_infill)
+    drawPaths(fill, shader, ORANGE, vaoIndex);
 }
 
-Slice::operator PathsD() const {
-  PathsD paths;
-  for (auto &contour : m_shells) {
-    paths.emplace_back(contour);
+void Slice::initOpenGLBuffer(const Clipper2Lib::PathsD &paths) {
+  for (auto path : paths) {
+    initOpenGLBuffer(path);
   }
-  return SimplifyPaths(paths, 0.000001);
+}
+
+void Slice::initOpenGLBuffer(const Clipper2Lib::PathD &path) {
+  uint VAO, VBO;
+  glGenVertexArrays(1, &VAO);
+  glGenBuffers(1, &VBO);
+
+  glBindVertexArray(VAO);
+
+  glBindBuffer(GL_ARRAY_BUFFER, VBO);
+  glBufferData(GL_ARRAY_BUFFER, path.size() * sizeof(PointD), path.data(),
+               GL_STATIC_DRAW);
+
+  glVertexAttribPointer(0, 2, GL_DOUBLE, GL_FALSE, sizeof(PointD), (void *)0);
+  glEnableVertexAttribArray(0);
+
+  glBindVertexArray(0);
+  m_VAOs.push_back(VAO);
+}
+
+void Slice::drawPaths(const PathsD &paths, Shader &shader, glm::vec3 color,
+                      size_t &vaoIndex) const {
+  shader.use();
+  shader.setVec3("color", color);
+  for (auto &path : paths)
+    drawPath(path, vaoIndex);
+}
+void Slice::drawPath(const PathD &path, size_t &vaoIndex) const {
+  glBindVertexArray(m_VAOs[vaoIndex++]);
+  glDrawArrays(GL_LINE_STRIP, 0, path.size());
+  glBindVertexArray(0);
 }

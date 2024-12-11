@@ -18,7 +18,9 @@ struct State {
   bool dropDown = true;
   int bedTemp = 50;
   int nozzleTemp = 200;
-  float speed = 50.0f;
+  float nozzleDiameter = 0.4f;
+  float printSpeed = 25.0f;
+  float infillSpeed = 50.0f;
   bool sliceViewFocused = false;
   bool modelViewFocused = false;
   float sliceScale = 5.0f;

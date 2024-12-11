@@ -1,32 +1,25 @@
 #include "gcodeWriter.h"
+#include "Nexus/Log.h"
+#include "clipper2/clipper.core.h"
+#include "state.h"
 #include "utils.h"
 
 std::ofstream GcodeWriter::m_file;
 float GcodeWriter::extrusion;
 float GcodeWriter::layerHeight;
-float GcodeWriter::layerThickness;
-float GcodeWriter::nozzle;
-int GcodeWriter::bedTemp;
-int GcodeWriter::nozzleTemp;
-int GcodeWriter::speed;
 
-void GcodeWriter::WriteGcode(const std::vector<Slice> &slices,
-                             GcodeSettings settings) {
+void GcodeWriter::WriteGcode(const std::vector<Slice> &slices) {
   GcodeWriter::extrusion = 0;
-  GcodeWriter::layerHeight = settings.layerHeight;
-  GcodeWriter::nozzle = settings.nozzle;
-  GcodeWriter::bedTemp = settings.bedTemp;
-  GcodeWriter::nozzleTemp = settings.nozzleTemp;
-  GcodeWriter::layerThickness = settings.layerHeight;
-  GcodeWriter::speed = settings.speed * 60;
+  GcodeWriter::layerHeight = g_state.layerHeight;
 
-  NewGcodeFile(settings.outFilePath);
+  NewGcodeFile("output.gcode");
   WriteHeader();
   m_file << "M107 ;turn off fan\n";
   m_file << ";LAYER_COUNT:" << slices.size() << "\n";
   for (int i = 0; i < slices.size(); i++) {
     m_file << ";LAYER:" << i << "\n";
-    layerHeight = settings.layerHeight * (i + 1);
+    Nexus::Logger::debug("Writing layer {}", i);
+    layerHeight = g_state.layerHeight * (i + 1);
     if (i == 2)
       m_file << "M106 S255 ;turn on fan\n";
     WriteSlice(slices[i]);
@@ -38,10 +31,10 @@ void GcodeWriter::WriteGcode(const std::vector<Slice> &slices,
 void GcodeWriter::NewGcodeFile(const char *filename) { m_file.open(filename); }
 
 void GcodeWriter::WriteHeader() {
-  m_file << "M140 S" << GcodeWriter::bedTemp << "\n";
-  m_file << "M190 S" << GcodeWriter::bedTemp << "\n";
-  m_file << "M104 S" << GcodeWriter::nozzleTemp << "\n";
-  m_file << "M109 S" << GcodeWriter::nozzleTemp << "\n";
+  m_file << "M140 S" << g_state.bedTemp << "\n";
+  m_file << "M190 S" << g_state.bedTemp << "\n";
+  m_file << "M104 S" << g_state.nozzleTemp << "\n";
+  m_file << "M109 S" << g_state.nozzleTemp << "\n";
   m_file << "G21 ;set units to millimeters\n";
   m_file << "M82 ;set extruder to absolute mode\n";
   m_file << "G28 ;home all axes\n";
@@ -59,18 +52,27 @@ void GcodeWriter::WriteHeader() {
   m_file << "G1 F2700 E-5\n";
 }
 
-void GcodeWriter::WritePath(const Contour &contour) {
-  auto points = contour.getPoints();
-  if (points.empty())
+void GcodeWriter::WritePaths(const Clipper2Lib::PathsD &paths, float speed) {
+  for (auto &path : paths)
+    WritePath(path, speed);
+}
+
+void GcodeWriter::WritePath(const Clipper2Lib::PathD &path, float speed) {
+  if (path.empty())
     return;
 
-  m_file << "G0 F6000 X" << points[0].x << " Y" << points[0].y << " Z"
+  m_file << "G0 F6000 X" << path[0].x << " Y" << path[0].y << " Z"
          << layerHeight << "\n";
-  for (size_t i = 1; i < points.size(); i++) {
-    extrusion +=
-        layerThickness * nozzle * distance(points[i - 1], points[i]) / fa;
-    m_file << "G1 F" << speed << " X" << points[i].x << " Y" << points[i].y
-           << " E" << extrusion << "\n";
+  for (size_t i = 1; i < path.size(); i++) {
+    float dist = distance(path[i - 1], path[i]);
+    float toExtrude = g_state.layerHeight * g_state.nozzleDiameter * dist / fa;
+    Nexus::Logger::debug(
+        "Extruding: {} for distance {}, between p1 ({}, {}) and p2 ({}, {})",
+        toExtrude, dist, path[i - 1].x, path[i - 1].y, path[i].x, path[i].y);
+
+    extrusion += toExtrude;
+    m_file << "G1 F" << speed << " X" << path[i].x << " Y" << path[i].y << " E"
+           << extrusion << "\n";
   }
 }
 
@@ -81,15 +83,15 @@ void GcodeWriter::WriteSlice(const Slice &slice) {
 
   for (auto it = shells.rbegin(); it != shells.rend() - 1; ++it) {
     m_file << ";TYPE:WALL-INNER\n";
-    WritePath(*it);
+    WritePaths(*it, g_state.printSpeed * 60.0f);
   }
 
   m_file << ";TYPE:WALL-OUTER\n";
-  WritePath(shells.front());
+  WritePaths(shells.front(), g_state.printSpeed * 60.0f);
 
   m_file << ";TYPE:FILL\n";
-  for (const Contour &infill : slice.getInfill())
-    WritePath(infill);
+  for (auto &infill : slice.getInfill())
+    WritePaths(infill, g_state.infillSpeed * 60.0f);
 }
 
 void GcodeWriter::WriteFooter() {

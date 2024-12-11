@@ -1,6 +1,7 @@
 #include "model.h"
 #include "Nexus/Log.h"
 #include "glm/gtc/type_ptr.hpp"
+#include "slice.h"
 
 #include <Nexus.h>
 #include <assimp/postprocess.h>
@@ -139,7 +140,7 @@ const glm::vec3 &Model::getScale() const { return m_scale; }
 float *Model::getScalePtr() { return glm::value_ptr(m_scale); }
 
 Slice Model::getSlice(double sliceHeight) {
-  sliceHeight += +0.000000001;
+  sliceHeight += 0.000000001;
   std::vector<Line> lineSegments;
   for (const auto &triangleOrig : m_triangles) {
     auto triangle = transformTriangle(triangleOrig);
@@ -155,7 +156,9 @@ Slice Model::getSlice(double sliceHeight) {
         continue;
 
       float t = (sliceHeight - v1.y) / (v2.y - v1.y);
-      segment.setNextPoint((v1 + t * (v2 - v1)));
+      double x = v1.x + t * (v2.x - v1.x);
+      double z = v1.z + t * (v2.z - v1.z);
+      segment.setNextPoint({x, z});
     }
     if (segment.p1 != segment.p2)
       lineSegments.push_back(segment);

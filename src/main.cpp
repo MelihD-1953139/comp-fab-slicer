@@ -4,6 +4,7 @@
 #include "printer.h"
 #include "resources.h"
 #include "state.h"
+#include "utils.h"
 
 #include <Nexus.h>
 #include <Nexus/Log.h>
@@ -163,7 +164,10 @@ int main(int argc, char *argv[]) {
 
         ImGui::InputInt("Bed Temp", &g_state.bedTemp);
         ImGui::InputInt("Nozzle Temp", &g_state.nozzleTemp);
-        ImGui::InputFloat("Speed", &g_state.speed, 0.0f, 0.0f, "%.2f mm/s");
+        ImGui::InputFloat("Speed", &g_state.printSpeed, 0.0f, 0.0f,
+                          "%.1f mm/s");
+        ImGui::InputFloat("Infill speed", &g_state.infillSpeed, 0.0f, 0.0f,
+                          "%.1f mm/s");
       }
 
       if (ImGui::CollapsingHeader("Object settings")) {
@@ -177,6 +181,8 @@ int main(int argc, char *argv[]) {
           model.setPosition(printer.getCenter() * ZEROY);
           g_state.maxSliceIndex = static_cast<int>(
               std::ceil(model.getHeight() / g_state.layerHeight));
+          g_state.sliceIndex = 1;
+          g_state.slices.clear();
         }
 
         ImGui::DragFloat3("Position", model.getPositionPtr(), 0,
@@ -189,7 +195,7 @@ int main(int argc, char *argv[]) {
 
       if (ImGui::CollapsingHeader("Slice settings")) {
         if (ImGui::SliderInt("Slice Index", &g_state.sliceIndex, 1,
-                             g_state.maxSliceIndex - 1)) {
+                             g_state.maxSliceIndex - 3)) {
           printer.setSliceHeight(g_state.sliceIndex * g_state.layerHeight);
         }
 
@@ -215,17 +221,19 @@ int main(int argc, char *argv[]) {
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         g_state.slices.clear();
         for (int i = 1; i < g_state.maxSliceIndex - 1; ++i) {
+          Logger::debug("Slicing layer {}", i);
           auto slice = model.getSlice(g_state.layerHeight * i);
-          auto perimeter = Union(slice, FillRule::EvenOdd);
+          auto perimeter = Union(slice.getShells().front(), FillRule::EvenOdd);
+          // debugPrintPathsD(perimeter);
 
-          PathsD shells;
+          std::vector<PathsD> shells;
           PathsD lastShell;
           for (int j = 0; j < g_state.shellCount; ++j) {
             lastShell = InflatePaths(perimeter,
                                      -printer.getNozzle() / 2.0f -
                                          printer.getNozzle() * j,
                                      JoinType::Miter, EndType::Polygon);
-            shells.append_range(lastShell);
+            shells.push_back(lastShell);
           }
 
           PathsD infillRaw = generateSparseRectangleInfill(
@@ -239,21 +247,14 @@ int main(int argc, char *argv[]) {
           clipper.Execute(ClipType::Intersection, FillRule::EvenOdd,
                           infillClosed, infillOpen);
 
-          g_state.slices.emplace_back(shells, infillOpen);
+          std::vector<PathsD> infill{infillOpen};
+          g_state.slices.emplace_back(shells, infill);
         }
       }
 
       if (ImGui::Button("Export to g-code",
                         ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        GcodeWriter::WriteGcode(g_state.slices,
-                                {
-                                    .outFilePath = "output.gcode",
-                                    .layerHeight = g_state.layerHeight,
-                                    .nozzle = printer.getNozzle(),
-                                    .bedTemp = g_state.bedTemp,
-                                    .nozzleTemp = g_state.nozzleTemp,
-                                    .speed = g_state.speed,
-                                });
+        GcodeWriter::WriteGcode(g_state.slices);
       }
     }
     ImGui::End();

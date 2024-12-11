@@ -1,5 +1,6 @@
 #pragma once
 
+#include "clipper2/clipper.core.h"
 #include "slice.h"
 #include <fstream>
 
@@ -16,25 +17,21 @@ struct GcodeSettings {
 
 class GcodeWriter {
 public:
-  static void WriteGcode(const std::vector<Slice> &slices,
-                         const GcodeSettings settings);
+  static void WriteGcode(const std::vector<Slice> &slices);
 
 private:
   static void NewGcodeFile(const char *filename);
   static void WriteHeader();
   static void WriteSlice(const Slice &slice);
-  static void WritePath(const Contour &contour);
+  static void WritePaths(const Clipper2Lib::PathsD &paths, float speed);
+  static void WritePath(const Clipper2Lib::PathD &path, float speed);
   static void WriteFooter();
   static void CloseGcodeFile();
 
   static std::ofstream m_file;
   static float extrusion;
   static float layerHeight;
-  static float layerThickness;
-  static float nozzle;
-  static int bedTemp;
-  static int nozzleTemp;
-  static int speed;
+
   constexpr static const float fa =
       FILLAMENT_DIAMETER * FILLAMENT_DIAMETER * glm::pi<float>() / 4;
 };

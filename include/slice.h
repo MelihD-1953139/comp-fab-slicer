@@ -4,6 +4,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
+#include <sys/types.h>
 #include <vector>
 
 #include "clipper2/clipper.core.h"
@@ -14,37 +15,15 @@
 #define YELLOW glm::vec3(1.0f, 1.0f, 0.0f)
 #define BLUE glm::vec3(0.0f, 0.0f, 1.0f)
 #define RED glm::vec3(1.0f, 0.0f, 0.0f)
-#define ORANGE glm::vec3(1.0f, 0.65f, 0.0f)
+#define ORANGE glm::vec3(1.0f, 0.5f, 0.0f)
 
 struct Line {
   Clipper2Lib::PointD p1, p2;
-  void setNextPoint(glm::vec3 point);
+  void setNextPoint(Clipper2Lib::PointD point);
   bool operator==(const Line &other) const;
 
 private:
   bool firstPointSet = false;
-};
-
-class Contour {
-  using PathD = Clipper2Lib::PathD;
-  using PointD = Clipper2Lib::PointD;
-
-public:
-  Contour(std::vector<glm::vec3> points);
-  Contour(PathD path, bool isClosed = true);
-  void draw(Shader &shader, glm::vec3 color) const;
-  const std::vector<PointD> &getPoints() const { return m_points; }
-  std::vector<PointD> getPoints() { return m_points; }
-
-  operator PathD() const;
-
-private:
-  std::vector<PointD> m_points;
-
-  unsigned int m_VAO, m_VBO;
-
-private:
-  void initOpenGLBuffers();
 };
 
 class Slice {
@@ -52,20 +31,27 @@ class Slice {
 
 public:
   Slice(std::vector<Line> lineSegments);
-  Slice(const PathsD &shells, const PathsD &infill);
+  Slice(const std::vector<PathsD> &shells, const std::vector<PathsD> &infill);
   std::pair<glm::vec2, glm::vec2> getBounds() const;
 
   void render(Shader &shader, const glm::vec3 &position,
               const float &scale) const;
 
-  operator PathsD() const;
-
-  const std::vector<Contour> &getShells() const { return m_shells; }
-  const std::vector<Contour> &getInfill() const { return m_infill; }
+  const std::vector<PathsD> &getShells() const { return m_shells; }
+  const std::vector<PathsD> &getInfill() const { return m_infill; }
 
 private:
-  const float EPSILON = 1e-5;
-  float currentEpsilon = EPSILON;
-  std::vector<Contour> m_shells;
-  std::vector<Contour> m_infill;
+  const double EPSILON = 1e-5;
+  double currentEpsilon = EPSILON;
+  std::vector<PathsD> m_shells;
+  std::vector<PathsD> m_infill;
+
+  std::vector<uint> m_VAOs;
+
+private:
+  void initOpenGLBuffer(const Clipper2Lib::PathsD &paths);
+  void initOpenGLBuffer(const Clipper2Lib::PathD &path);
+  void drawPaths(const Clipper2Lib::PathsD &paths, Shader &shader,
+                 glm::vec3 color, size_t &vaoIndex) const;
+  void drawPath(const Clipper2Lib::PathD &path, size_t &vaoIndex) const;
 };
