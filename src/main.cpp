@@ -254,6 +254,9 @@ int main(int argc, char *argv[]) {
               std::clamp(g_state.sliceSettings.shellCount, 1, 10);
         }
 
+        ImGui::InputInt("Floor count", &g_state.sliceSettings.floorCount);
+        ImGui::InputInt("Roof count", &g_state.sliceSettings.roofCount);
+
         if (ImGui::InputFloat("Infill Density",
                               &g_state.sliceSettings.infillDensity, 0.0f, 0.0f,
                               "%.2f %%")) {
@@ -283,6 +286,17 @@ int main(int argc, char *argv[]) {
           g_state.data.shells.push_back(shells);
         }
         for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
+          // first g_state.sliceSettings.floorCount layers are always solid
+          if (i < g_state.sliceSettings.floorCount ||
+              i >= g_state.sliceSettings.maxSliceIndex -
+                       g_state.sliceSettings.roofCount) {
+            PathsD fill =
+                generateConcentricFill(g_state.printerSettings.nozzleDiameter,
+                                       g_state.data.shells[i].back());
+            g_state.data.slices.emplace_back(g_state.data.shells[i],
+                                             std::vector<PathsD>{fill});
+            continue;
+          }
 
           PathsD infillRaw = generateSparseRectangleInfill(
               g_state.sliceSettings.infillDensity / 100.0f, {0.0f, 0.0f},

@@ -8,12 +8,18 @@ struct State {
   using PathsD = Clipper2Lib::PathsD;
   struct {
     float layerHeight = 0.2f;
+
     int sliceIndex = 1;
     int maxSliceIndex;
+
     int shellCount = 2;
     float infillDensity = 20.0f;
-    float minimumRetractDistance = 1.5f;
+
+    int floorCount = 2;
+    int roofCount = 2;
+
     float retractDistance = 5.0f;
+    float minimumRetractDistance = 1.5f;
   } sliceSettings;
   struct {
     bool dropDown = true;
