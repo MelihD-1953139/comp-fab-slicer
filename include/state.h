@@ -42,7 +42,11 @@ struct State {
     char outputFile[256] = "output.gcode";
 
   } fileSettings;
-  std::vector<Slice> slices;
+
+  struct {
+    std::vector<std::vector<PathsD>> shells;
+    std::vector<Slice> slices;
+  } data;
 };
 
 extern State g_state;

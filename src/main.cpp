@@ -6,6 +6,7 @@
 #include "printer.h"
 #include "resources.h"
 #include "state.h"
+#include "utils.h"
 
 #include <Nexus.h>
 #include <Nexus/Log.h>
@@ -48,6 +49,21 @@ void rotatePaths(PathsD &paths, float angle) {
       point.y = p.z;
     }
   }
+}
+
+PathsD generateConcentricFill(float nozzleDiameter, const PathsD &lastShell) {
+  std::vector<PathsD> fills{closePathsD(InflatePaths(
+      lastShell, -nozzleDiameter, JoinType::Miter, EndType::Polygon))};
+  while (fills.back().size() > 0) {
+    fills.push_back(closePathsD(InflatePaths(
+        fills.back(), -nozzleDiameter, JoinType::Miter, EndType::Polygon)));
+  }
+
+  PathsD fill;
+  for (auto &paths : fills)
+    fill.append_range(paths);
+
+  return fill;
 }
 
 PathsD generateSparseRectangleInfill(float density, PointD min, PointD max,
@@ -203,7 +219,8 @@ int main(int argc, char *argv[]) {
           g_state.sliceSettings.maxSliceIndex = static_cast<int>(
               std::ceil(model.getHeight() / g_state.sliceSettings.layerHeight));
           g_state.sliceSettings.sliceIndex = 1;
-          g_state.slices.clear();
+          g_state.data.slices.clear();
+          g_state.data.shells.clear();
         }
 
         ImGui::DragFloat3("Position", model.getPositionPtr(), 0,
@@ -216,8 +233,8 @@ int main(int argc, char *argv[]) {
 
       if (ImGui::CollapsingHeader("Slice settings")) {
         if (ImGui::SliderInt("Slice Index", &g_state.sliceSettings.sliceIndex,
-                             1, g_state.sliceSettings.maxSliceIndex - 3)) {
-          printer.setSliceHeight(g_state.sliceSettings.sliceIndex *
+                             1, g_state.sliceSettings.maxSliceIndex)) {
+          printer.setSliceHeight((g_state.sliceSettings.sliceIndex - 1) *
                                  g_state.sliceSettings.layerHeight);
         }
 
@@ -246,11 +263,13 @@ int main(int argc, char *argv[]) {
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        g_state.slices.clear();
-        for (int i = 1; i < g_state.sliceSettings.maxSliceIndex - 1; ++i) {
-          auto slice = model.getSlice(g_state.sliceSettings.layerHeight * i);
+        g_state.data.slices.clear();
+        g_state.data.shells.clear();
+        auto layerHeight = g_state.sliceSettings.layerHeight;
+
+        for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
+          auto slice = model.getSlice(layerHeight / 2.0f + layerHeight * i);
           auto perimeter = Union(slice.getShells().front(), FillRule::EvenOdd);
-          // debugPrintPathsD(perimeter);
 
           std::vector<PathsD> shells;
           PathsD lastShell;
@@ -261,27 +280,30 @@ int main(int argc, char *argv[]) {
                                      JoinType::Miter, EndType::Polygon);
             shells.push_back(lastShell);
           }
+          g_state.data.shells.push_back(shells);
+        }
+        for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
 
-          ;
           PathsD infillRaw = generateSparseRectangleInfill(
               g_state.sliceSettings.infillDensity / 100.0f, {0.0f, 0.0f},
               {printer.getSize().x, printer.getSize().z});
 
           ClipperD clipper;
-          clipper.AddClip(lastShell.empty() ? perimeter : lastShell);
+          clipper.AddClip(g_state.data.shells[i].back());
           clipper.AddOpenSubject(infillRaw);
           PathsD infillClosed, infillOpen;
           clipper.Execute(ClipType::Intersection, FillRule::EvenOdd,
                           infillClosed, infillOpen);
 
           std::vector<PathsD> infill{infillOpen};
-          g_state.slices.emplace_back(shells, infill);
+          g_state.data.slices.emplace_back(g_state.data.shells[i], infill);
         }
       }
 
       if (ImGui::Button("Export to g-code",
                         ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        GcodeWriter writer(g_state.fileSettings.outputFile, g_state.slices);
+        GcodeWriter writer(g_state.fileSettings.outputFile,
+                           g_state.data.slices);
       }
     }
     ImGui::End();
@@ -329,7 +351,7 @@ int main(int argc, char *argv[]) {
         g_state.windowSettings.sliceViewFocused = ImGui::IsWindowFocused();
 
         sliceBuffer.bind();
-        if (!g_state.slices.empty()) {
+        if (!g_state.data.slices.empty()) {
           const int width = ImGui::GetContentRegionAvail().x;
           const int height = ImGui::GetContentRegionAvail().y;
 
@@ -346,7 +368,7 @@ int main(int argc, char *argv[]) {
           sliceBuffer.clear();
           sliceShader.setBool("useShading", false);
 
-          g_state.slices[g_state.sliceSettings.sliceIndex].render(
+          g_state.data.slices[g_state.sliceSettings.sliceIndex - 1].render(
               sliceShader, position, g_state.windowSettings.sliceScale);
         }
         sliceBuffer.unbind();
