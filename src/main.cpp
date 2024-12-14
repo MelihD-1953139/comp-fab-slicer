@@ -1,6 +1,8 @@
 #include "camera.h"
 #include "framebuffer.h"
 #include "gcodeWriter.h"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/fwd.hpp"
 #include "printer.h"
 #include "resources.h"
 #include "state.h"
@@ -30,7 +32,26 @@ void usage(const char *program) {
   Logger::info("Usage: {} <filename>", program);
 }
 
-PathsD generateSparseRectangleInfill(float density, PointD min, PointD max) {
+void rotatePaths(PathsD &paths, float angle) {
+  auto [minx, miny, maxx, maxy] = GetBounds(paths);
+  glm::mat4 model = glm::mat4(1.0f);
+  model = glm::translate(
+      model, glm::vec3((minx + maxx) / 2.0f, 0.0f, (miny + maxy) / 2.0f));
+  model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+  model = glm::translate(
+      model, -glm::vec3((minx + maxx) / 2.0f, 0.0f, (miny + maxy) / 2.0f));
+  for (auto &path : paths) {
+    for (auto &point : path) {
+      glm::vec4 p = {point.x, 0.0f, point.y, 1.0f};
+      p = model * p;
+      point.x = p.x;
+      point.y = p.z;
+    }
+  }
+}
+
+PathsD generateSparseRectangleInfill(float density, PointD min, PointD max,
+                                     float angle = 45.0f) {
   double step = 1.0f / density;
   bool leftToRight = true;
 
@@ -58,6 +79,7 @@ PathsD generateSparseRectangleInfill(float density, PointD min, PointD max) {
     leftToRight = !leftToRight;
   }
 
+  rotatePaths(infill, angle);
   return infill;
 }
 
@@ -240,8 +262,9 @@ int main(int argc, char *argv[]) {
             shells.push_back(lastShell);
           }
 
+          ;
           PathsD infillRaw = generateSparseRectangleInfill(
-              g_state.sliceSettings.infillDensity / 100.0f, {0, 0},
+              g_state.sliceSettings.infillDensity / 100.0f, {0.0f, 0.0f},
               {printer.getSize().x, printer.getSize().z});
 
           ClipperD clipper;
