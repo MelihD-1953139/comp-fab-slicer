@@ -12,6 +12,8 @@ struct State {
     int maxSliceIndex;
     int shellCount = 2;
     float infillDensity = 20.0f;
+    float minimumRetractDistance = 1.5f;
+    float retractDistance = 5.0f;
   } sliceSettings;
   struct {
     bool dropDown = true;
@@ -29,8 +31,10 @@ struct State {
     int bedTemp = 50;
     int nozzleTemp = 200;
     float nozzleDiameter = 0.4f;
-    float printSpeed = 25.0f;
-    float infillSpeed = 50.0f;
+    float printSpeed = 50.0f;
+    float infillSpeed = printSpeed;
+    float wallSpeed = printSpeed * 0.5;
+    float inititalLayerSpeed = printSpeed * 0.2;
   } printerSettings;
 
   struct {

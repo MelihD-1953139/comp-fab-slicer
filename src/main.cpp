@@ -167,8 +167,6 @@ int main(int argc, char *argv[]) {
         ImGui::InputInt("Nozzle Temp", &g_state.printerSettings.nozzleTemp);
         ImGui::InputFloat("Speed", &g_state.printerSettings.printSpeed, 0.0f,
                           0.0f, "%.1f mm/s");
-        ImGui::InputFloat("Infill speed", &g_state.printerSettings.infillSpeed,
-                          0.0f, 0.0f, "%.1f mm/s");
       }
 
       if (ImGui::CollapsingHeader("Object settings")) {
@@ -228,7 +226,6 @@ int main(int argc, char *argv[]) {
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         g_state.slices.clear();
         for (int i = 1; i < g_state.sliceSettings.maxSliceIndex - 1; ++i) {
-          Logger::debug("Slicing layer {}", i);
           auto slice = model.getSlice(g_state.sliceSettings.layerHeight * i);
           auto perimeter = Union(slice.getShells().front(), FillRule::EvenOdd);
           // debugPrintPathsD(perimeter);
@@ -261,7 +258,7 @@ int main(int argc, char *argv[]) {
 
       if (ImGui::Button("Export to g-code",
                         ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        GcodeWriter::WriteGcode(g_state.slices);
+        GcodeWriter writer(g_state.fileSettings.outputFile, g_state.slices);
       }
     }
     ImGui::End();

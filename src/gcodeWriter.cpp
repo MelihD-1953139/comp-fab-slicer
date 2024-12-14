@@ -3,14 +3,20 @@
 #include "clipper2/clipper.core.h"
 #include "state.h"
 #include "utils.h"
+#include <iomanip>
+#include <ios>
 
-std::ofstream GcodeWriter::m_file;
-float GcodeWriter::extrusion;
-float GcodeWriter::layerHeight;
+GcodeWriter::GcodeWriter(const char *filepath,
+                         const std::vector<Slice> &slices) {
+  extrusion = 0;
+  layerHeight = g_state.sliceSettings.layerHeight;
 
-void GcodeWriter::WriteGcode(const std::vector<Slice> &slices) {
-  GcodeWriter::extrusion = 0;
-  GcodeWriter::layerHeight = g_state.sliceSettings.layerHeight;
+  float infillspeed = g_state.printerSettings.infillSpeed;
+  float wallspeed = g_state.printerSettings.wallSpeed;
+  g_state.printerSettings.infillSpeed =
+      g_state.printerSettings.inititalLayerSpeed;
+  g_state.printerSettings.wallSpeed =
+      g_state.printerSettings.inititalLayerSpeed;
 
   NewGcodeFile("output.gcode");
   WriteHeader();
@@ -18,10 +24,12 @@ void GcodeWriter::WriteGcode(const std::vector<Slice> &slices) {
   m_file << ";LAYER_COUNT:" << slices.size() << "\n";
   for (int i = 0; i < slices.size(); i++) {
     m_file << ";LAYER:" << i << "\n";
-    Nexus::Logger::debug("Writing layer {}", i);
     layerHeight = g_state.sliceSettings.layerHeight * (i + 1);
-    if (i == 2)
+    if (i == 2) {
       m_file << "M106 S255 ;turn on fan\n";
+      g_state.printerSettings.wallSpeed = wallspeed;
+      g_state.printerSettings.infillSpeed = infillspeed;
+    }
     WriteSlice(slices[i]);
   }
   WriteFooter();
@@ -61,19 +69,31 @@ void GcodeWriter::WritePath(const Clipper2Lib::PathD &path, float speed) {
   if (path.empty())
     return;
 
-  m_file << "G0 F6000 X" << path[0].x << " Y" << path[0].y << " Z"
-         << layerHeight << "\n";
+  if (distance(currentPosition, path[0]) >
+      g_state.sliceSettings.minimumRetractDistance) {
+    // Retract
+    m_file << "G1 F1800 E" << extrusion - g_state.sliceSettings.retractDistance
+           << " ; retract filament\n";
+    // Move
+    m_file << "G0 F6000 X" << std::fixed << std::setprecision(3) << path[0].x
+           << " Y" << path[0].y << " Z" << layerHeight << "\n";
+    // Unretract
+    m_file << "G1 F1800 E" << extrusion << " ; unretract filament\n";
+  } else {
+    // Move
+    m_file << "G0 F6000 X" << std::fixed << std::setprecision(3) << path[0].x
+           << " Y" << path[0].y << " Z" << layerHeight << "\n";
+  }
+
+  currentPosition = path[0];
   for (size_t i = 1; i < path.size(); i++) {
     float dist = distance(path[i - 1], path[i]);
-    float toExtrude = g_state.sliceSettings.layerHeight *
-                      g_state.printerSettings.nozzleDiameter * dist / fa;
-    Nexus::Logger::debug(
-        "Extruding: {} for distance {}, between p1 ({}, {}) and p2 ({}, {})",
-        toExtrude, dist, path[i - 1].x, path[i - 1].y, path[i].x, path[i].y);
-
-    extrusion += toExtrude;
-    m_file << "G1 F" << speed << " X" << path[i].x << " Y" << path[i].y << " E"
-           << extrusion << "\n";
+    currentPosition = path[i];
+    extrusion += g_state.sliceSettings.layerHeight *
+                 g_state.printerSettings.nozzleDiameter * dist / fa;
+    m_file << "G1 F" << std::fixed << std::setprecision(0) << speed
+           << std::setprecision(3) << " X" << path[i].x << " Y" << path[i].y
+           << std::setprecision(5) << " E" << extrusion << "\n";
   }
 }
 
@@ -84,11 +104,11 @@ void GcodeWriter::WriteSlice(const Slice &slice) {
 
   for (auto it = shells.rbegin(); it != shells.rend() - 1; ++it) {
     m_file << ";TYPE:WALL-INNER\n";
-    WritePaths(*it, g_state.printerSettings.printSpeed * 60.0f);
+    WritePaths(*it, g_state.printerSettings.wallSpeed * 60.0f);
   }
 
   m_file << ";TYPE:WALL-OUTER\n";
-  WritePaths(shells.front(), g_state.printerSettings.printSpeed * 60.0f);
+  WritePaths(shells.front(), g_state.printerSettings.wallSpeed * 60.0f);
 
   m_file << ";TYPE:FILL\n";
   for (auto &infill : slice.getInfill())
