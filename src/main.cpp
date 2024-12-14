@@ -286,6 +286,7 @@ int main(int argc, char *argv[]) {
           g_state.data.shells.push_back(shells);
         }
         for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
+          std::vector<PathsD> infill;
           // first g_state.sliceSettings.floorCount layers are always solid
           if (i < g_state.sliceSettings.floorCount ||
               i >= g_state.sliceSettings.maxSliceIndex -
@@ -293,23 +294,57 @@ int main(int argc, char *argv[]) {
             PathsD fill =
                 generateConcentricFill(g_state.printerSettings.nozzleDiameter,
                                        g_state.data.shells[i].back());
-            g_state.data.slices.emplace_back(g_state.data.shells[i],
-                                             std::vector<PathsD>{fill});
+            infill.push_back(fill);
+            g_state.data.slices.emplace_back(g_state.data.shells[i], infill);
             continue;
           }
+
+          // Since we know we are not in the first n layers, we can assume there
+          // are always n layers below the current one
+          // Find floor sections
+
+          ClipperD clipper;
+          clipper.AddClip(g_state.data.shells[i - 1].back());
+          for (int j = 2; j <= g_state.sliceSettings.floorCount; ++j) {
+            clipper.AddSubject(g_state.data.shells[i - j].back());
+          }
+          PathsD floor;
+          clipper.Execute(ClipType::Intersection, FillRule::EvenOdd, floor);
+          floor = Difference(g_state.data.shells[i].back(), floor,
+                             FillRule::EvenOdd);
+          infill.push_back(generateConcentricFill(
+              g_state.printerSettings.nozzleDiameter, floor));
+
+          // Find roof sections
+          clipper.Clear();
+          clipper.AddClip(g_state.data.shells[i + 1].back());
+          for (int j = 2; j <= g_state.sliceSettings.roofCount; ++j) {
+            clipper.AddSubject(g_state.data.shells[i + j].back());
+          }
+          PathsD roof;
+          clipper.Execute(ClipType::Intersection, FillRule::EvenOdd, roof);
+          roof = Difference(g_state.data.shells[i].back(), roof,
+                            FillRule::EvenOdd);
+          infill.push_back(generateConcentricFill(
+              g_state.printerSettings.nozzleDiameter, roof));
+          // Find infill sections
+
+          auto section = Difference(g_state.data.shells[i].back(),
+                                    Union(floor, roof, FillRule::EvenOdd),
+                                    FillRule::EvenOdd);
 
           PathsD infillRaw = generateSparseRectangleInfill(
               g_state.sliceSettings.infillDensity / 100.0f, {0.0f, 0.0f},
               {printer.getSize().x, printer.getSize().z});
 
-          ClipperD clipper;
-          clipper.AddClip(g_state.data.shells[i].back());
+          clipper.Clear();
+          clipper.AddClip(section);
           clipper.AddOpenSubject(infillRaw);
           PathsD infillClosed, infillOpen;
           clipper.Execute(ClipType::Intersection, FillRule::EvenOdd,
                           infillClosed, infillOpen);
 
-          std::vector<PathsD> infill{infillOpen};
+          infill.push_back(infillOpen);
           g_state.data.slices.emplace_back(g_state.data.shells[i], infill);
         }
       }
