@@ -14,6 +14,7 @@
 #define GREEN glm::vec3(0.0f, 1.0f, 0.0f)
 #define YELLOW glm::vec3(1.0f, 1.0f, 0.0f)
 #define BLUE glm::vec3(0.0f, 0.0f, 1.0f)
+#define BLUEGREEN glm::vec3(0.0f, 1.0f, 1.0f)
 #define RED glm::vec3(1.0f, 0.0f, 0.0f)
 #define ORANGE glm::vec3(1.0f, 0.5f, 0.0f)
 
@@ -31,7 +32,8 @@ class Slice {
 
 public:
   Slice(std::vector<Line> lineSegments);
-  Slice(const std::vector<PathsD> &shells, const std::vector<PathsD> &infill);
+  Slice(const std::vector<PathsD> &shells, const std::vector<PathsD> &infill,
+        const PathsD &support);
   std::pair<glm::vec2, glm::vec2> getBounds() const;
 
   void render(Shader &shader, const glm::vec3 &position,
@@ -39,12 +41,14 @@ public:
 
   const std::vector<PathsD> &getShells() const { return m_shells; }
   const std::vector<PathsD> &getInfill() const { return m_infill; }
+  const PathsD &getSupport() const { return m_support; }
 
 private:
   const double EPSILON = 1e-5;
   double currentEpsilon = EPSILON;
   std::vector<PathsD> m_shells;
   std::vector<PathsD> m_infill;
+  PathsD m_support;
 
   std::vector<uint> m_VAOs;
 
@@ -54,4 +58,5 @@ private:
   void drawPaths(const Clipper2Lib::PathsD &paths, Shader &shader,
                  glm::vec3 color, size_t &vaoIndex) const;
   void drawPath(const Clipper2Lib::PathD &path, size_t &vaoIndex) const;
+  bool clockwise(const Clipper2Lib::PathD &path) const;
 };

@@ -95,7 +95,8 @@ PathsD generateSparseRectangleInfill(float density, PointD min, PointD max,
     leftToRight = !leftToRight;
   }
 
-  rotatePaths(infill, angle);
+  if (angle != 0.0f)
+    rotatePaths(infill, angle);
   return infill;
 }
 
@@ -114,7 +115,9 @@ int main(int argc, char *argv[]) {
   if (argc >= 2)
     strcpy(g_state.fileSettings.inputFile, argv[1]);
 
-  auto window = std::unique_ptr<Window>(Window::create(WindowProps("Slicer")));
+  auto window = std::unique_ptr<Window>(
+      Window::create(WindowProps("Slicer", g_state.windowSettings.windowSize.x,
+                                 g_state.windowSettings.windowSize.y)));
   window->setVSync(true);
 
   Shader previewShader(baseVertexShader, baseFragmentShader);
@@ -266,13 +269,12 @@ int main(int argc, char *argv[]) {
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        g_state.data.slices.clear();
         g_state.data.shells.clear();
         auto layerHeight = g_state.sliceSettings.layerHeight;
 
         for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
           auto slice = model.getSlice(layerHeight / 2.0f + layerHeight * i);
-          auto perimeter = Union(slice.getShells().front(), FillRule::EvenOdd);
+          PathsD perimeter = slice.getShells().front();
 
           std::vector<PathsD> shells;
           PathsD lastShell;
@@ -285,6 +287,8 @@ int main(int argc, char *argv[]) {
           }
           g_state.data.shells.push_back(shells);
         }
+
+        g_state.data.infill.clear();
         for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
           std::vector<PathsD> infill;
           // first g_state.sliceSettings.floorCount layers are always solid
@@ -295,14 +299,14 @@ int main(int argc, char *argv[]) {
                 generateConcentricFill(g_state.printerSettings.nozzleDiameter,
                                        g_state.data.shells[i].back());
             infill.push_back(fill);
-            g_state.data.slices.emplace_back(g_state.data.shells[i], infill);
+            g_state.data.infill.push_back(infill);
             continue;
           }
 
           // Since we know we are not in the first n layers, we can assume there
           // are always n layers below the current one
-          // Find floor sections
 
+          // Find floor sections
           ClipperD clipper;
           clipper.AddClip(g_state.data.shells[i - 1].back());
           for (int j = 2; j <= g_state.sliceSettings.floorCount; ++j) {
@@ -327,8 +331,8 @@ int main(int argc, char *argv[]) {
                             FillRule::EvenOdd);
           infill.push_back(generateConcentricFill(
               g_state.printerSettings.nozzleDiameter, roof));
-          // Find infill sections
 
+          // Find infill sections
           auto section = Difference(g_state.data.shells[i].back(),
                                     Union(floor, roof, FillRule::EvenOdd),
                                     FillRule::EvenOdd);
@@ -345,7 +349,57 @@ int main(int argc, char *argv[]) {
                           infillClosed, infillOpen);
 
           infill.push_back(infillOpen);
-          g_state.data.slices.emplace_back(g_state.data.shells[i], infill);
+          g_state.data.infill.push_back(infill);
+        }
+
+        g_state.data.supports.clear();
+        for (int i = g_state.sliceSettings.maxSliceIndex - 1; i >= 0; --i) {
+          if (i == g_state.sliceSettings.maxSliceIndex - 1) {
+            g_state.data.supports.emplace_back();
+            g_state.data.supportAreas.emplace_back();
+            continue;
+          }
+
+          ClipperD clipper;
+          clipper.AddSubject(g_state.data.shells[i + 1].front());
+          clipper.AddSubject(g_state.data.supportAreas.front());
+          PathsD previousPerimeterAndSupport;
+          clipper.Execute(ClipType::Union, FillRule::EvenOdd,
+                          previousPerimeterAndSupport);
+
+          float a = std::min(g_state.printerSettings.nozzleDiameter / 2.0f,
+                             layerHeight);
+          PathsD dilatedPerimeters =
+              InflatePaths(g_state.data.shells[i].front(), a, JoinType::Miter,
+                           EndType::Polygon);
+
+          auto supportArea = Difference(previousPerimeterAndSupport,
+                                        dilatedPerimeters, FillRule::EvenOdd);
+          g_state.data.supportAreas.insert(g_state.data.supportAreas.begin(),
+                                           supportArea);
+
+          auto supportInfill = generateSparseRectangleInfill(
+              g_state.sliceSettings.infillDensity / 100.0f, {0.0f, 0.0f},
+              {printer.getSize().x, printer.getSize().z});
+
+          clipper.Clear();
+          clipper.AddClip(supportArea);
+          clipper.AddOpenSubject(supportInfill);
+          PathsD supportAreaOpen, supportAreaClosed;
+          clipper.Execute(ClipType::Intersection, FillRule::EvenOdd,
+                          supportAreaClosed, supportAreaOpen);
+
+          g_state.data.supports.insert(g_state.data.supports.begin(),
+                                       supportAreaOpen);
+        }
+
+        g_state.data.slices.clear();
+
+        for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
+          auto &shell = g_state.data.shells[i];
+          auto &infill = g_state.data.infill[i];
+          PathsD &support = g_state.data.supports[i];
+          g_state.data.slices.emplace_back(shell, infill, support);
         }
       }
 

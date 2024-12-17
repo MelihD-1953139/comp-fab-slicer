@@ -1,4 +1,5 @@
 #include "slice.h"
+#include "Nexus/Log.h"
 #include "utils.h"
 
 #include <Nexus.h>
@@ -69,11 +70,12 @@ Slice::Slice(std::vector<Line> lineSegments) {
     if (currentPointsCount == path.size())
       currentEpsilon *= 10;
   }
+  perimeter = Clipper2Lib::Union(perimeter, FillRule::EvenOdd);
   m_shells.push_back(perimeter);
 }
 
-Slice::Slice(const std::vector<PathsD> &shells,
-             const std::vector<PathsD> &fill) {
+Slice::Slice(const std::vector<PathsD> &shells, const std::vector<PathsD> &fill,
+             const PathsD &support) {
   for (auto &paths : shells) {
     auto inserted = m_shells.emplace_back(closePathsD(paths));
     initOpenGLBuffer(inserted);
@@ -82,6 +84,9 @@ Slice::Slice(const std::vector<PathsD> &shells,
     m_infill.emplace_back(paths);
     initOpenGLBuffer(paths);
   }
+
+  m_support = support;
+  initOpenGLBuffer(m_support);
 }
 
 std::pair<glm::vec2, glm::vec2> Slice::getBounds() const {
@@ -119,6 +124,9 @@ void Slice::render(Shader &shader, const glm::vec3 &position,
 
   for (auto &fill : m_infill)
     drawPaths(fill, shader, ORANGE, vaoIndex);
+
+  // debugPrintPathsD(m_support);
+  drawPaths(m_support, shader, BLUE, vaoIndex);
 }
 
 void Slice::initOpenGLBuffer(const Clipper2Lib::PathsD &paths) {

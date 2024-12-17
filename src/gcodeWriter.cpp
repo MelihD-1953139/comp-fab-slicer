@@ -113,6 +113,8 @@ void GcodeWriter::WriteSlice(const Slice &slice) {
   m_file << ";TYPE:FILL\n";
   for (auto &infill : slice.getInfill())
     WritePaths(infill, g_state.printerSettings.infillSpeed * 60.0f);
+  m_file << ";TYPE:SUPPORT\n";
+  WritePaths(slice.getSupport(), g_state.printerSettings.infillSpeed * 60.0f);
 }
 
 void GcodeWriter::WriteFooter() {

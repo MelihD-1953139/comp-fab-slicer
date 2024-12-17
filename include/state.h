@@ -26,7 +26,7 @@ struct State {
   } objectSettings;
   struct {
     bool showDemoWindow = false;
-    glm::ivec2 windowSize{1280, 720};
+    glm::ivec2 windowSize{1920, 1080};
     bool showSlicePlane = false;
     bool sliceViewFocused = false;
     bool modelViewFocused = false;
@@ -51,6 +51,10 @@ struct State {
 
   struct {
     std::vector<std::vector<PathsD>> shells;
+    std::vector<std::vector<PathsD>> infill;
+    std::vector<std::vector<PathsD>> fill;
+    std::vector<PathsD> supports;
+    std::vector<PathsD> supportAreas;
     std::vector<Slice> slices;
   } data;
 };
