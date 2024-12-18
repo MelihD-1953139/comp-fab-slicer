@@ -102,6 +102,9 @@ void GcodeWriter::WriteSlice(const Slice &slice) {
   if (shells.empty())
     return;
 
+  m_file << ";TYPE:SUPPORT\n";
+  WritePaths(slice.getSupport(), g_state.printerSettings.infillSpeed * 60.0f);
+
   for (auto it = shells.rbegin(); it != shells.rend() - 1; ++it) {
     m_file << ";TYPE:WALL-INNER\n";
     WritePaths(*it, g_state.printerSettings.wallSpeed * 60.0f);
@@ -110,11 +113,13 @@ void GcodeWriter::WriteSlice(const Slice &slice) {
   m_file << ";TYPE:WALL-OUTER\n";
   WritePaths(shells.front(), g_state.printerSettings.wallSpeed * 60.0f);
 
+  m_file << ";TYPE:SKIN\n";
+  for (auto &fill : slice.getFill())
+    WritePaths(fill, g_state.printerSettings.infillSpeed * 60.0f);
+
   m_file << ";TYPE:FILL\n";
   for (auto &infill : slice.getInfill())
     WritePaths(infill, g_state.printerSettings.infillSpeed * 60.0f);
-  m_file << ";TYPE:SUPPORT\n";
-  WritePaths(slice.getSupport(), g_state.printerSettings.infillSpeed * 60.0f);
 }
 
 void GcodeWriter::WriteFooter() {

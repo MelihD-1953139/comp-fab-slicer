@@ -50,10 +50,6 @@ struct State {
   } fileSettings;
 
   struct {
-    std::vector<std::vector<PathsD>> shells;
-    std::vector<std::vector<PathsD>> infill;
-    std::vector<std::vector<PathsD>> fill;
-    std::vector<PathsD> supports;
     std::vector<PathsD> supportAreas;
     std::vector<Slice> slices;
   } data;

@@ -31,15 +31,23 @@ class Slice {
   using PathsD = Clipper2Lib::PathsD;
 
 public:
+  Slice() = default;
   Slice(std::vector<Line> lineSegments);
-  Slice(const std::vector<PathsD> &shells, const std::vector<PathsD> &infill,
-        const PathsD &support);
   std::pair<glm::vec2, glm::vec2> getBounds() const;
 
   void render(Shader &shader, const glm::vec3 &position,
               const float &scale) const;
 
+  // assumes the shell is closed
+  void addShell(const PathsD &shell);
+  void addFill(const PathsD &fill);
+  void addInfill(const PathsD &infill);
+  void addSupport(const PathsD &support);
+
+  const PathsD &getPerimeter() const { return m_shells.front(); }
   const std::vector<PathsD> &getShells() const { return m_shells; }
+  const PathsD &getInnermostShell() const { return m_shells.back(); }
+  const std::vector<PathsD> &getFill() const { return m_fill; }
   const std::vector<PathsD> &getInfill() const { return m_infill; }
   const PathsD &getSupport() const { return m_support; }
 
@@ -48,12 +56,13 @@ private:
   double currentEpsilon = EPSILON;
   std::vector<PathsD> m_shells;
   std::vector<PathsD> m_infill;
+  std::vector<PathsD> m_fill;
   PathsD m_support;
 
   std::vector<uint> m_VAOs;
 
 private:
-  void initOpenGLBuffer(const Clipper2Lib::PathsD &paths);
+  void initOpenGLBuffers(const Clipper2Lib::PathsD &paths);
   void initOpenGLBuffer(const Clipper2Lib::PathD &path);
   void drawPaths(const Clipper2Lib::PathsD &paths, Shader &shader,
                  glm::vec3 color, size_t &vaoIndex) const;

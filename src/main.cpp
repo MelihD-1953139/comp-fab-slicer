@@ -223,7 +223,6 @@ int main(int argc, char *argv[]) {
               std::ceil(model.getHeight() / g_state.sliceSettings.layerHeight));
           g_state.sliceSettings.sliceIndex = 1;
           g_state.data.slices.clear();
-          g_state.data.shells.clear();
         }
 
         ImGui::DragFloat3("Position", model.getPositionPtr(), 0,
@@ -269,37 +268,34 @@ int main(int argc, char *argv[]) {
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        g_state.data.shells.clear();
-        auto layerHeight = g_state.sliceSettings.layerHeight;
+        g_state.data.slices.clear();
+        g_state.data.slices.resize(g_state.sliceSettings.maxSliceIndex);
 
+        auto layerHeight = g_state.sliceSettings.layerHeight;
         for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
           auto slice = model.getSlice(layerHeight / 2.0f + layerHeight * i);
           PathsD perimeter = slice.getShells().front();
 
-          std::vector<PathsD> shells;
           PathsD lastShell;
           for (int j = 0; j < g_state.sliceSettings.shellCount; ++j) {
             lastShell = InflatePaths(perimeter,
                                      -printer.getNozzle() / 2.0f -
                                          printer.getNozzle() * j,
                                      JoinType::Miter, EndType::Polygon);
-            shells.push_back(lastShell);
+            g_state.data.slices[i].addShell(closePathsD(lastShell));
           }
-          g_state.data.shells.push_back(shells);
         }
 
-        g_state.data.infill.clear();
         for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
           std::vector<PathsD> infill;
           // first g_state.sliceSettings.floorCount layers are always solid
           if (i < g_state.sliceSettings.floorCount ||
               i >= g_state.sliceSettings.maxSliceIndex -
                        g_state.sliceSettings.roofCount) {
-            PathsD fill =
-                generateConcentricFill(g_state.printerSettings.nozzleDiameter,
-                                       g_state.data.shells[i].back());
-            infill.push_back(fill);
-            g_state.data.infill.push_back(infill);
+            PathsD fill = generateConcentricFill(
+                g_state.printerSettings.nozzleDiameter,
+                g_state.data.slices[i].getShells().back());
+            g_state.data.slices[i].addFill(fill);
             continue;
           }
 
@@ -308,32 +304,32 @@ int main(int argc, char *argv[]) {
 
           // Find floor sections
           ClipperD clipper;
-          clipper.AddClip(g_state.data.shells[i - 1].back());
+          clipper.AddClip(g_state.data.slices[i - 1].getInnermostShell());
           for (int j = 2; j <= g_state.sliceSettings.floorCount; ++j) {
-            clipper.AddSubject(g_state.data.shells[i - j].back());
+            clipper.AddSubject(g_state.data.slices[i - j].getInnermostShell());
           }
           PathsD floor;
           clipper.Execute(ClipType::Intersection, FillRule::EvenOdd, floor);
-          floor = Difference(g_state.data.shells[i].back(), floor,
+          floor = Difference(g_state.data.slices[i].getInnermostShell(), floor,
                              FillRule::EvenOdd);
-          infill.push_back(generateConcentricFill(
+          g_state.data.slices[i].addFill(generateConcentricFill(
               g_state.printerSettings.nozzleDiameter, floor));
 
           // Find roof sections
           clipper.Clear();
-          clipper.AddClip(g_state.data.shells[i + 1].back());
+          clipper.AddClip(g_state.data.slices[i + 1].getInnermostShell());
           for (int j = 2; j <= g_state.sliceSettings.roofCount; ++j) {
-            clipper.AddSubject(g_state.data.shells[i + j].back());
+            clipper.AddSubject(g_state.data.slices[i + j].getInnermostShell());
           }
           PathsD roof;
           clipper.Execute(ClipType::Intersection, FillRule::EvenOdd, roof);
-          roof = Difference(g_state.data.shells[i].back(), roof,
+          roof = Difference(g_state.data.slices[i].getInnermostShell(), roof,
                             FillRule::EvenOdd);
-          infill.push_back(generateConcentricFill(
+          g_state.data.slices[i].addFill(generateConcentricFill(
               g_state.printerSettings.nozzleDiameter, roof));
 
           // Find infill sections
-          auto section = Difference(g_state.data.shells[i].back(),
+          auto section = Difference(g_state.data.slices[i].getInnermostShell(),
                                     Union(floor, roof, FillRule::EvenOdd),
                                     FillRule::EvenOdd);
 
@@ -349,19 +345,19 @@ int main(int argc, char *argv[]) {
                           infillClosed, infillOpen);
 
           infill.push_back(infillOpen);
-          g_state.data.infill.push_back(infill);
+          for (auto &fill : infill)
+            g_state.data.slices[i].addInfill(fill);
         }
 
-        g_state.data.supports.clear();
         for (int i = g_state.sliceSettings.maxSliceIndex - 1; i >= 0; --i) {
           if (i == g_state.sliceSettings.maxSliceIndex - 1) {
-            g_state.data.supports.emplace_back();
+            g_state.data.slices[i].addSupport(PathsD());
             g_state.data.supportAreas.emplace_back();
             continue;
           }
 
           ClipperD clipper;
-          clipper.AddSubject(g_state.data.shells[i + 1].front());
+          clipper.AddSubject(g_state.data.slices[i + 1].getPerimeter());
           clipper.AddSubject(g_state.data.supportAreas.front());
           PathsD previousPerimeterAndSupport;
           clipper.Execute(ClipType::Union, FillRule::EvenOdd,
@@ -370,17 +366,22 @@ int main(int argc, char *argv[]) {
           float a = std::min(g_state.printerSettings.nozzleDiameter / 2.0f,
                              layerHeight);
           PathsD dilatedPerimeters =
-              InflatePaths(g_state.data.shells[i].front(), a, JoinType::Miter,
-                           EndType::Polygon);
+              InflatePaths(g_state.data.slices[i].getPerimeter(), a,
+                           JoinType::Miter, EndType::Polygon);
 
           auto supportArea = Difference(previousPerimeterAndSupport,
                                         dilatedPerimeters, FillRule::EvenOdd);
           g_state.data.supportAreas.insert(g_state.data.supportAreas.begin(),
                                            supportArea);
 
-          auto supportInfill = generateSparseRectangleInfill(
-              g_state.sliceSettings.infillDensity / 100.0f, {0.0f, 0.0f},
-              {printer.getSize().x, printer.getSize().z});
+          PathsD supportInfill =
+              i < g_state.sliceSettings.floorCount
+                  ? generateConcentricFill(
+                        g_state.printerSettings.nozzleDiameter, supportArea)
+                  : generateSparseRectangleInfill(
+                        g_state.sliceSettings.infillDensity / 100.0f,
+                        {0.0f, 0.0f},
+                        {printer.getSize().x, printer.getSize().z}, 0.0f);
 
           clipper.Clear();
           clipper.AddClip(supportArea);
@@ -389,17 +390,7 @@ int main(int argc, char *argv[]) {
           clipper.Execute(ClipType::Intersection, FillRule::EvenOdd,
                           supportAreaClosed, supportAreaOpen);
 
-          g_state.data.supports.insert(g_state.data.supports.begin(),
-                                       supportAreaOpen);
-        }
-
-        g_state.data.slices.clear();
-
-        for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
-          auto &shell = g_state.data.shells[i];
-          auto &infill = g_state.data.infill[i];
-          PathsD &support = g_state.data.supports[i];
-          g_state.data.slices.emplace_back(shell, infill, support);
+          g_state.data.slices[i].addSupport(supportAreaOpen);
         }
       }
 

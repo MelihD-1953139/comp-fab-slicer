@@ -74,19 +74,26 @@ Slice::Slice(std::vector<Line> lineSegments) {
   m_shells.push_back(perimeter);
 }
 
-Slice::Slice(const std::vector<PathsD> &shells, const std::vector<PathsD> &fill,
-             const PathsD &support) {
-  for (auto &paths : shells) {
-    auto inserted = m_shells.emplace_back(closePathsD(paths));
-    initOpenGLBuffer(inserted);
-  }
-  for (auto &paths : fill) {
-    m_infill.emplace_back(paths);
-    initOpenGLBuffer(paths);
-  }
+void Slice::addShell(const PathsD &shell) {
+  m_shells.push_back(shell);
+  initOpenGLBuffers(shell);
+}
 
-  m_support = support;
-  initOpenGLBuffer(m_support);
+void Slice::addFill(const PathsD &fill) {
+  m_fill.push_back(fill);
+  initOpenGLBuffers(fill);
+}
+
+void Slice::addInfill(const PathsD &infill) {
+  m_infill.push_back(infill);
+  initOpenGLBuffers(infill);
+}
+
+void Slice::addSupport(const PathsD &support) {
+  for (auto &path : support) {
+    m_support.push_back(path);
+  }
+  initOpenGLBuffers(m_support);
 }
 
 std::pair<glm::vec2, glm::vec2> Slice::getBounds() const {
@@ -122,6 +129,9 @@ void Slice::render(Shader &shader, const glm::vec3 &position,
   for (auto it = m_shells.rbegin(); it != m_shells.rend() - 1; ++it)
     drawPaths(*it, shader, GREEN, vaoIndex);
 
+  for (auto &fill : m_fill)
+    drawPaths(fill, shader, YELLOW, vaoIndex);
+
   for (auto &fill : m_infill)
     drawPaths(fill, shader, ORANGE, vaoIndex);
 
@@ -129,7 +139,7 @@ void Slice::render(Shader &shader, const glm::vec3 &position,
   drawPaths(m_support, shader, BLUE, vaoIndex);
 }
 
-void Slice::initOpenGLBuffer(const Clipper2Lib::PathsD &paths) {
+void Slice::initOpenGLBuffers(const Clipper2Lib::PathsD &paths) {
   for (auto path : paths) {
     initOpenGLBuffer(path);
   }
