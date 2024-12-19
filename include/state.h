@@ -15,8 +15,8 @@ struct State {
     int shellCount = 2;
     float infillDensity = 20.0f;
 
-    int floorCount = 2;
-    int roofCount = 2;
+    int floorCount = 4;
+    int roofCount = 4;
 
     float retractDistance = 5.0f;
     float minimumRetractDistance = 1.5f;

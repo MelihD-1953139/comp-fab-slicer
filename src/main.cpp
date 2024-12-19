@@ -366,22 +366,22 @@ int main(int argc, char *argv[]) {
           float a = std::min(g_state.printerSettings.nozzleDiameter / 2.0f,
                              layerHeight);
           PathsD dilatedPerimeters =
-              InflatePaths(g_state.data.slices[i].getPerimeter(), a,
+              InflatePaths(g_state.data.slices[i].getPerimeter(), 0.8f,
                            JoinType::Miter, EndType::Polygon);
 
           auto supportArea = Difference(previousPerimeterAndSupport,
                                         dilatedPerimeters, FillRule::EvenOdd);
+
           g_state.data.supportAreas.insert(g_state.data.supportAreas.begin(),
                                            supportArea);
+          supportArea =
+              InflatePaths(supportArea, 0.8, JoinType::Miter, EndType::Polygon);
+          supportArea =
+              Difference(supportArea, dilatedPerimeters, FillRule::EvenOdd);
 
-          PathsD supportInfill =
-              i < g_state.sliceSettings.floorCount
-                  ? generateConcentricFill(
-                        g_state.printerSettings.nozzleDiameter, supportArea)
-                  : generateSparseRectangleInfill(
-                        g_state.sliceSettings.infillDensity / 100.0f,
-                        {0.0f, 0.0f},
-                        {printer.getSize().x, printer.getSize().z}, 0.0f);
+          PathsD supportInfill = generateSparseRectangleInfill(
+              g_state.sliceSettings.infillDensity / 100.0f, {0.0f, 0.0f},
+              {printer.getSize().x, printer.getSize().z}, 0.0f);
 
           clipper.Clear();
           clipper.AddClip(supportArea);
@@ -390,6 +390,7 @@ int main(int argc, char *argv[]) {
           clipper.Execute(ClipType::Intersection, FillRule::EvenOdd,
                           supportAreaClosed, supportAreaOpen);
 
+          g_state.data.slices[i].addSupport(closePathsD(supportArea));
           g_state.data.slices[i].addSupport(supportAreaOpen);
         }
       }

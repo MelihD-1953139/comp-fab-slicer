@@ -103,7 +103,8 @@ void GcodeWriter::WriteSlice(const Slice &slice) {
     return;
 
   m_file << ";TYPE:SUPPORT\n";
-  WritePaths(slice.getSupport(), g_state.printerSettings.infillSpeed * 60.0f);
+  for (auto &support : slice.getSupport())
+    WritePaths(support, g_state.printerSettings.wallSpeed * 60.0f);
 
   for (auto it = shells.rbegin(); it != shells.rend() - 1; ++it) {
     m_file << ";TYPE:WALL-INNER\n";
@@ -123,37 +124,19 @@ void GcodeWriter::WriteSlice(const Slice &slice) {
 }
 
 void GcodeWriter::WriteFooter() {
-  //   m_file << "G1 F1800 E-3 ; retract filament\n";
-  //   m_file << "G1 F3000 Z20 ; lift nozzle\n";
-  //   m_file << "G1 X0 Y235 F1000 ; move to cooling position\n";
-  //   m_file << "M104 S0 ; turn off temperature\n";
-  //   m_file << "M140 S0 ; turn off heatbed\n";
-  //   m_file << "M107 ; turn off fan\n";
-  //   m_file << "M220 S100 ; set speed factor back to 100%\n";
-  //   m_file << "M221 S100 ; set extrusion factor back to 100%\n";
-  //   m_file << "G91 ; set to relative positioning\n";
-  //   m_file << "G90 ; set to absolute positioning\n";
-  //   m_file << "M84 ; disable motors\n";
-  //   m_file << "M82 ; set extruder to absolute mode\n";
-
-  m_file << "G1 F2400 E" << extrusion << ";\n";
-  m_file << "M140 S0\n";
-  m_file << "M107\n";
   m_file << "G91 ;Relative positioning\n";
   m_file << "G1 E-2 F2700 ;Retract a bit\n";
-  m_file << "G1 E - 2 Z0 .2 F2400; Retract and raise Z\n";
-  m_file << "G1 X5 Y5 F3000; Wipe out\n";
-  m_file << "G1 Z10; Raise Z more\n";
-  m_file << "G90; Absolute positioning\n";
+  m_file << "G1 E-2 Z0.2 F2400 ;Retract and raise Z\n";
+  m_file << "G1 X5 Y5 F3000 ;Wipe out\n";
+  m_file << "G1 Z10 ;Raise Z more\n";
+  m_file << "G90 ;Absolute positioning\n";
 
-  m_file << "G1 X0 Y220 ;Present print\n";
+  m_file << "G1 X0 Y{machine_depth} ;Present print\n";
   m_file << "M106 S0 ;Turn-off fan\n";
   m_file << "M104 S0 ;Turn-off hotend\n";
   m_file << "M140 S0 ;Turn-off bed\n";
+
   m_file << "M84 X Y E ;Disable all steppers but Z\n";
-  m_file << "M82 ;absolute extrusion mode\n";
-  m_file << "M104 S0\n";
-  m_file << ";End of Gcode\n";
 }
 
 void GcodeWriter::CloseGcodeFile() { m_file.close(); }

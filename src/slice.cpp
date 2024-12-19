@@ -1,5 +1,4 @@
 #include "slice.h"
-#include "Nexus/Log.h"
 #include "utils.h"
 
 #include <Nexus.h>
@@ -90,10 +89,8 @@ void Slice::addInfill(const PathsD &infill) {
 }
 
 void Slice::addSupport(const PathsD &support) {
-  for (auto &path : support) {
-    m_support.push_back(path);
-  }
-  initOpenGLBuffers(m_support);
+  m_support.push_back(support);
+  initOpenGLBuffers(support);
 }
 
 std::pair<glm::vec2, glm::vec2> Slice::getBounds() const {
@@ -136,7 +133,8 @@ void Slice::render(Shader &shader, const glm::vec3 &position,
     drawPaths(fill, shader, ORANGE, vaoIndex);
 
   // debugPrintPathsD(m_support);
-  drawPaths(m_support, shader, BLUE, vaoIndex);
+  for (auto &path : m_support)
+    drawPaths(path, shader, BLUE, vaoIndex);
 }
 
 void Slice::initOpenGLBuffers(const Clipper2Lib::PathsD &paths) {

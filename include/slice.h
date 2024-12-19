@@ -49,7 +49,7 @@ public:
   const PathsD &getInnermostShell() const { return m_shells.back(); }
   const std::vector<PathsD> &getFill() const { return m_fill; }
   const std::vector<PathsD> &getInfill() const { return m_infill; }
-  const PathsD &getSupport() const { return m_support; }
+  const std::vector<PathsD> &getSupport() const { return m_support; }
 
 private:
   const double EPSILON = 1e-5;
@@ -57,7 +57,7 @@ private:
   std::vector<PathsD> m_shells;
   std::vector<PathsD> m_infill;
   std::vector<PathsD> m_fill;
-  PathsD m_support;
+  std::vector<PathsD> m_support;
 
   std::vector<uint> m_VAOs;
 
