@@ -379,6 +379,12 @@ int main(int argc, char *argv[]) {
           supportArea =
               Difference(supportArea, dilatedPerimeters, FillRule::EvenOdd);
 
+          PathsD lastLayerSupport = Difference(
+              g_state.data.slices[i + 1].getPerimeter(),
+              g_state.data.slices[i].getPerimeter(), FillRule::EvenOdd);
+          supportArea =
+              Difference(supportArea, lastLayerSupport, FillRule::EvenOdd);
+
           PathsD supportInfill = generateSparseRectangleInfill(
               g_state.sliceSettings.infillDensity / 100.0f, {0.0f, 0.0f},
               {printer.getSize().x, printer.getSize().z}, 0.0f);
@@ -390,6 +396,7 @@ int main(int argc, char *argv[]) {
           clipper.Execute(ClipType::Intersection, FillRule::EvenOdd,
                           supportAreaClosed, supportAreaOpen);
 
+          // g_state.data.slices[i].addSupport(closePathsD(lastLayerSupport));
           g_state.data.slices[i].addSupport(closePathsD(supportArea));
           g_state.data.slices[i].addSupport(supportAreaOpen);
         }
