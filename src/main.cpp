@@ -310,26 +310,24 @@ int main(int argc, char *argv[]) {
           // are always n layers below the current one
 
           // Find floor sections
-          ClipperD clipper;
-          clipper.AddClip(g_state.data.slices[i - 1].getInnermostShell());
+          PathsD floor = g_state.data.slices[i - 1].getInnermostShell();
           for (int j = 2; j <= g_state.sliceSettings.floorCount; ++j) {
-            clipper.AddSubject(g_state.data.slices[i - j].getInnermostShell());
+            floor =
+                Intersect(floor, g_state.data.slices[i - j].getInnermostShell(),
+                          FillRule::EvenOdd);
           }
-          PathsD floor;
-          clipper.Execute(ClipType::Intersection, FillRule::EvenOdd, floor);
           floor = Difference(g_state.data.slices[i].getInnermostShell(), floor,
                              FillRule::EvenOdd);
           g_state.data.slices[i].addFill(generateConcentricFill(
               g_state.printerSettings.nozzleDiameter, floor));
 
           // Find roof sections
-          clipper.Clear();
-          clipper.AddClip(g_state.data.slices[i + 1].getInnermostShell());
+          PathsD roof = g_state.data.slices[i + 1].getInnermostShell();
           for (int j = 2; j <= g_state.sliceSettings.roofCount; ++j) {
-            clipper.AddSubject(g_state.data.slices[i + j].getInnermostShell());
+            roof =
+                Intersect(roof, g_state.data.slices[i + j].getInnermostShell(),
+                          FillRule::EvenOdd);
           }
-          PathsD roof;
-          clipper.Execute(ClipType::Intersection, FillRule::EvenOdd, roof);
           roof = Difference(g_state.data.slices[i].getInnermostShell(), roof,
                             FillRule::EvenOdd);
           g_state.data.slices[i].addFill(generateConcentricFill(
@@ -344,7 +342,7 @@ int main(int argc, char *argv[]) {
               g_state.sliceSettings.infillDensity / 100.0f, {0.0f, 0.0f},
               {printer.getSize().x, printer.getSize().z});
 
-          clipper.Clear();
+          ClipperD clipper;
           clipper.AddClip(section);
           clipper.AddOpenSubject(infillRaw);
           PathsD infillClosed, infillOpen;
