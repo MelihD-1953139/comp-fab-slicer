@@ -43,8 +43,8 @@ void Framebuffer::bind() { glBindFramebuffer(GL_FRAMEBUFFER, m_fbo); }
 
 void Framebuffer::unbind() { glBindFramebuffer(GL_FRAMEBUFFER, 0); }
 
-void Framebuffer::clear() {
-  glClearColor(0.98, 0.98, 0.98, 1.0);
+void Framebuffer::clear(const glm::vec4 &color) {
+  glClearColor(color.r, color.g, color.b, color.a);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 

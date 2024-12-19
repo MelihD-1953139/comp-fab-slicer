@@ -52,8 +52,7 @@ public:
   const std::vector<PathsD> &getSupport() const { return m_support; }
 
 private:
-  const double EPSILON = 1e-5;
-  double currentEpsilon = EPSILON;
+  const double EPSILON = 1e-3;
   std::vector<PathsD> m_shells;
   std::vector<PathsD> m_infill;
   std::vector<PathsD> m_fill;
@@ -67,5 +66,4 @@ private:
   void drawPaths(const Clipper2Lib::PathsD &paths, Shader &shader,
                  glm::vec3 color, size_t &vaoIndex) const;
   void drawPath(const Clipper2Lib::PathD &path, size_t &vaoIndex) const;
-  bool clockwise(const Clipper2Lib::PathD &path) const;
 };

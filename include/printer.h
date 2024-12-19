@@ -6,7 +6,7 @@
 
 class Printer {
 public:
-  Printer(glm::ivec3 size = {220, 250, 220}, float nozzle = 0.4f);
+  Printer(glm::ivec3 size = {235, 250, 235}, float nozzle = 0.4f);
 
   void setSize(glm::ivec3 size);
   glm::ivec3 getSize() const;

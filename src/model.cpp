@@ -2,6 +2,7 @@
 #include "Nexus/Log.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "slice.h"
+#include "utils.h"
 
 #include <Nexus.h>
 #include <assimp/postprocess.h>
@@ -155,12 +156,12 @@ Slice Model::getSlice(double sliceHeight) {
       if ((v1.y - sliceHeight) * (v2.y - sliceHeight) > 0)
         continue;
 
-      float t = (sliceHeight - v1.y) / (v2.y - v1.y);
+      double t = (sliceHeight - v1.y) / (v2.y - v1.y);
       double x = v1.x + t * (v2.x - v1.x);
       double z = v1.z + t * (v2.z - v1.z);
       segment.setNextPoint({x, z});
     }
-    if (segment.p1 != segment.p2)
+    if (distance(segment.p1, segment.p2) >= 1e-3)
       lineSegments.push_back(segment);
   }
 

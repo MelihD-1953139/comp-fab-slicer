@@ -40,25 +40,23 @@ Slice::Slice(std::vector<Line> lineSegments) {
 
     for (int i = 0; i < lineSegments.size(); ++i) {
       auto line = lineSegments[i];
-      if (distance(path.back(), line.p1) < currentEpsilon) {
-        if (distance(firstPoint, line.p2) < currentEpsilon) {
+      if (distance(path.back(), line.p1) < EPSILON) {
+        if (distance(firstPoint, line.p2) < EPSILON) {
           path.push_back(firstPoint);
-          perimeter.emplace_back(path);
+          perimeter.emplace_back(SimplifyPath(path, 0.1));
           path.clear();
           lineSegments.erase(lineSegments.begin() + i);
-          currentEpsilon = EPSILON;
         } else {
           path.push_back(line.p2);
           lineSegments.erase(lineSegments.begin() + i);
         }
         break;
-      } else if (distance(path.back(), line.p2) < currentEpsilon) {
-        if (distance(firstPoint, line.p1) < currentEpsilon) {
+      } else if (distance(path.back(), line.p2) < EPSILON) {
+        if (distance(firstPoint, line.p1) < EPSILON) {
           path.push_back(firstPoint);
-          perimeter.emplace_back(SimplifyPath(path, currentEpsilon));
+          perimeter.emplace_back(SimplifyPath(path, 0.1));
           path.clear();
           lineSegments.erase(lineSegments.begin() + i);
-          currentEpsilon = EPSILON;
         } else {
           path.push_back(line.p1);
           lineSegments.erase(lineSegments.begin() + i);
@@ -66,8 +64,6 @@ Slice::Slice(std::vector<Line> lineSegments) {
         break;
       }
     }
-    if (currentPointsCount == path.size())
-      currentEpsilon *= 10;
   }
   perimeter = Clipper2Lib::Union(perimeter, FillRule::EvenOdd);
   m_shells.push_back(perimeter);
@@ -132,7 +128,6 @@ void Slice::render(Shader &shader, const glm::vec3 &position,
   for (auto &fill : m_infill)
     drawPaths(fill, shader, ORANGE, vaoIndex);
 
-  // debugPrintPathsD(m_support);
   for (auto &path : m_support)
     drawPaths(path, shader, BLUE, vaoIndex);
 }

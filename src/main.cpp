@@ -223,6 +223,7 @@ int main(int argc, char *argv[]) {
               std::ceil(model.getHeight() / g_state.sliceSettings.layerHeight));
           g_state.sliceSettings.sliceIndex = 1;
           g_state.data.slices.clear();
+          g_state.data.supportAreas.clear();
         }
 
         ImGui::DragFloat3("Position", model.getPositionPtr(), 0,
@@ -268,13 +269,17 @@ int main(int argc, char *argv[]) {
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+        Logger::info("Slicing model");
         g_state.data.slices.clear();
         g_state.data.slices.resize(g_state.sliceSettings.maxSliceIndex);
 
         auto layerHeight = g_state.sliceSettings.layerHeight;
         for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
+          Logger::debug("Slicing layer {}", i);
           auto slice = model.getSlice(layerHeight / 2.0f + layerHeight * i);
           PathsD perimeter = slice.getShells().front();
+          // if (i == 0)
+          //   debugPrintPathsD(perimeter);
 
           PathsD lastShell;
           for (int j = 0; j < g_state.sliceSettings.shellCount; ++j) {
@@ -286,7 +291,9 @@ int main(int argc, char *argv[]) {
           }
         }
 
+        Logger::info("Generating infill and floors/roofs");
         for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
+          Logger::debug("Generating infill for layer {}", i);
           std::vector<PathsD> infill;
           // first g_state.sliceSettings.floorCount layers are always solid
           if (i < g_state.sliceSettings.floorCount ||
@@ -349,7 +356,9 @@ int main(int argc, char *argv[]) {
             g_state.data.slices[i].addInfill(fill);
         }
 
+        Logger::info("Generating support structures");
         for (int i = g_state.sliceSettings.maxSliceIndex - 1; i >= 0; --i) {
+          Logger::debug("Generating support for layer {}", i);
           if (i == g_state.sliceSettings.maxSliceIndex - 1) {
             g_state.data.slices[i].addSupport(PathsD());
             g_state.data.supportAreas.emplace_back();
@@ -366,7 +375,8 @@ int main(int argc, char *argv[]) {
           float a = std::min(g_state.printerSettings.nozzleDiameter / 2.0f,
                              layerHeight);
           PathsD dilatedPerimeters =
-              InflatePaths(g_state.data.slices[i].getPerimeter(), 0.8f,
+              InflatePaths(g_state.data.slices[i].getPerimeter(),
+                           g_state.printerSettings.nozzleDiameter * 3.0f,
                            JoinType::Miter, EndType::Polygon);
 
           auto supportArea = Difference(previousPerimeterAndSupport,
@@ -374,8 +384,9 @@ int main(int argc, char *argv[]) {
 
           g_state.data.supportAreas.insert(g_state.data.supportAreas.begin(),
                                            supportArea);
-          supportArea =
-              InflatePaths(supportArea, 0.8, JoinType::Miter, EndType::Polygon);
+          supportArea = InflatePaths(
+              supportArea, g_state.printerSettings.nozzleDiameter * 3.0f,
+              JoinType::Miter, EndType::Polygon);
           supportArea =
               Difference(supportArea, dilatedPerimeters, FillRule::EvenOdd);
 
@@ -400,6 +411,7 @@ int main(int argc, char *argv[]) {
           g_state.data.slices[i].addSupport(closePathsD(supportArea));
           g_state.data.slices[i].addSupport(supportAreaOpen);
         }
+        Logger::info("Slicing complete");
       }
 
       if (ImGui::Button("Export to g-code",
@@ -467,7 +479,7 @@ int main(int argc, char *argv[]) {
           sliceShader.setMat4("projection", projection);
 
           sliceBuffer.resize(width, height);
-          sliceBuffer.clear();
+          sliceBuffer.clear(glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
           sliceShader.setBool("useShading", false);
 
           g_state.data.slices[g_state.sliceSettings.sliceIndex - 1].render(
