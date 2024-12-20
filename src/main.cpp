@@ -5,6 +5,7 @@
 #include "glm/fwd.hpp"
 #include "printer.h"
 #include "resources.h"
+#include "slicer.h"
 #include "state.h"
 #include "utils.h"
 
@@ -21,8 +22,6 @@
 #include <memory>
 
 #define ZEROY glm::vec3(1.0f, 0.0f, 1.0f)
-#define SHADER_VERT_PATH "../res/shaders/base.vert"
-#define SHADER_FRAG_PATH "../res/shaders/base.frag"
 
 using namespace Nexus;
 using namespace Clipper2Lib;
@@ -210,7 +209,7 @@ int main(int argc, char *argv[]) {
                           0.0f, "%.1f mm/s");
       }
 
-      if (ImGui::CollapsingHeader("Object settings")) {
+      if (ImGui::CollapsingHeader("Model settings")) {
         g_state.sliceSettings.maxSliceIndex = std::ceil<int>(
             model.getHeight() / g_state.sliceSettings.layerHeight);
 
@@ -227,7 +226,7 @@ int main(int argc, char *argv[]) {
         }
 
         ImGui::DragFloat3("Position", model.getPositionPtr(), 0,
-                          glm::min(printer.getSize().x, printer.getSize().z));
+                          std::min(printer.getSize().x, printer.getSize().z));
         ImGui::DragFloat3("Scale", model.getScalePtr(), 0, 10);
         ImGui::DragFloat3("Rotation", model.getRotationPtr(), -180, 180);
 
@@ -269,6 +268,7 @@ int main(int argc, char *argv[]) {
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+
         Logger::info("Slicing model");
         g_state.data.slices.clear();
         g_state.data.slices.resize(g_state.sliceSettings.maxSliceIndex);
@@ -278,8 +278,6 @@ int main(int argc, char *argv[]) {
           Logger::debug("Slicing layer {}", i);
           auto slice = model.getSlice(layerHeight / 2.0f + layerHeight * i);
           PathsD perimeter = slice.getShells().front();
-          // if (i == 0)
-          //   debugPrintPathsD(perimeter);
 
           PathsD lastShell;
           for (int j = 0; j < g_state.sliceSettings.shellCount; ++j) {
@@ -394,9 +392,14 @@ int main(int argc, char *argv[]) {
           supportArea =
               Difference(supportArea, lastLayerSupport, FillRule::EvenOdd);
 
-          PathsD supportInfill = generateSparseRectangleInfill(
-              g_state.sliceSettings.infillDensity / 100.0f, {0.0f, 0.0f},
-              {printer.getSize().x, printer.getSize().z}, 0.0f);
+          PathsD supportInfill;
+          if (i == 0)
+            supportInfill = generateConcentricFill(
+                g_state.printerSettings.nozzleDiameter, supportArea);
+          else
+            supportInfill = generateSparseRectangleInfill(
+                g_state.sliceSettings.infillDensity / 100.0f, {0.0f, 0.0f},
+                {printer.getSize().x, printer.getSize().z}, 0.0f);
 
           clipper.Clear();
           clipper.AddClip(supportArea);
