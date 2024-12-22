@@ -32,17 +32,20 @@ class Slice {
 
 public:
   Slice() = default;
-  Slice(std::vector<Line> lineSegments);
+  Slice(std::vector<Line> &lineSegments);
   std::pair<glm::vec2, glm::vec2> getBounds() const;
 
   void render(Shader &shader, const glm::vec3 &position,
               const float &scale) const;
+
+  void clear();
 
   // assumes the shell is closed
   void addShell(const PathsD &shell);
   void addFill(const PathsD &fill);
   void addInfill(const PathsD &infill);
   void addSupport(const PathsD &support);
+  void setSupportArea(const PathsD supportArea) { m_supportArea = supportArea; }
 
   const PathsD &getPerimeter() const { return m_shells.front(); }
   const std::vector<PathsD> &getShells() const { return m_shells; }
@@ -50,6 +53,7 @@ public:
   const std::vector<PathsD> &getFill() const { return m_fill; }
   const std::vector<PathsD> &getInfill() const { return m_infill; }
   const std::vector<PathsD> &getSupport() const { return m_support; }
+  const PathsD &getSupportArea() const { return m_supportArea; }
 
 private:
   const double EPSILON = 1e-3;
@@ -57,6 +61,7 @@ private:
   std::vector<PathsD> m_infill;
   std::vector<PathsD> m_fill;
   std::vector<PathsD> m_support;
+  PathsD m_supportArea;
 
   std::vector<uint> m_VAOs;
 

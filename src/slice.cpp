@@ -2,16 +2,21 @@
 #include "utils.h"
 
 #include <Nexus.h>
+#include <algorithm>
 #include <clipper2/clipper.core.h>
 #include <clipper2/clipper.h>
 #include <cstdlib>
 #include <glm/fwd.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <limits>
+#include <map>
 #include <sys/types.h>
 
 using namespace Clipper2Lib;
 
 void Line::setNextPoint(Clipper2Lib::PointD point) {
+  // point = {std::round(point.x * 100.0) / 100.0,
+  //          std::round(point.y * 100.0) / 100.0};
   if (firstPointSet) {
     p2 = point;
   } else {
@@ -25,7 +30,7 @@ bool Line::operator==(const Line &other) const {
          (p1 == other.p2 && p2 == other.p1);
 }
 
-Slice::Slice(std::vector<Line> lineSegments) {
+Slice::Slice(std::vector<Line> &lineSegments) {
   PathsD perimeter;
   PathD path;
   while (!lineSegments.empty()) {
@@ -67,6 +72,18 @@ Slice::Slice(std::vector<Line> lineSegments) {
   }
   perimeter = Clipper2Lib::Union(perimeter, FillRule::EvenOdd);
   m_shells.push_back(perimeter);
+}
+
+void Slice::clear() {
+  m_shells.clear();
+  m_fill.clear();
+  m_infill.clear();
+  m_support.clear();
+  m_supportArea = PathsD();
+  for (auto vao : m_VAOs) {
+    glDeleteVertexArrays(1, &vao);
+  }
+  m_VAOs.clear();
 }
 
 void Slice::addShell(const PathsD &shell) {

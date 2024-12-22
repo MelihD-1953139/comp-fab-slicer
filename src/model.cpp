@@ -15,7 +15,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 // ======================= Triangle ========================
-
 Triangle::Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3)
     : vertices({v1, v2, v3}) {}
 float Triangle::getYmin() const {
@@ -114,6 +113,7 @@ void Model::render(Shader &shader, const glm::mat4 &view,
 glm::vec3 Model::getMin() const { return m_min * m_scale; }
 glm::vec3 Model::getMax() const { return m_max * m_scale; }
 glm::vec3 Model::getCenter() const { return m_center * m_scale; }
+
 float Model::getHeight() {
   auto model = getModelMatrix();
   m_max = glm::vec3(-std::numeric_limits<float>::max());
@@ -126,6 +126,10 @@ float Model::getHeight() {
   }
 
   return m_max.y - m_min.y;
+}
+
+size_t Model::getLayerCount(float layerheight) const {
+  return (getMax().y - getMin().y) / layerheight;
 }
 
 void Model::setPosition(glm::vec3 position) { m_position = position; }

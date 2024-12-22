@@ -32,73 +32,6 @@ void usage(const char *program) {
   Logger::info("Usage: {} <filename>", program);
 }
 
-void rotatePaths(PathsD &paths, float angle) {
-  auto [minx, miny, maxx, maxy] = GetBounds(paths);
-  glm::mat4 model = glm::mat4(1.0f);
-  model = glm::translate(
-      model, glm::vec3((minx + maxx) / 2.0f, 0.0f, (miny + maxy) / 2.0f));
-  model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
-  model = glm::translate(
-      model, -glm::vec3((minx + maxx) / 2.0f, 0.0f, (miny + maxy) / 2.0f));
-  for (auto &path : paths) {
-    for (auto &point : path) {
-      glm::vec4 p = {point.x, 0.0f, point.y, 1.0f};
-      p = model * p;
-      point.x = p.x;
-      point.y = p.z;
-    }
-  }
-}
-
-PathsD generateConcentricFill(float nozzleDiameter, const PathsD &lastShell) {
-  std::vector<PathsD> fills{closePathsD(InflatePaths(
-      lastShell, -nozzleDiameter, JoinType::Miter, EndType::Polygon))};
-  while (fills.back().size() > 0) {
-    fills.push_back(closePathsD(InflatePaths(
-        fills.back(), -nozzleDiameter, JoinType::Miter, EndType::Polygon)));
-  }
-
-  PathsD fill;
-  for (auto &paths : fills)
-    fill.append_range(paths);
-
-  return fill;
-}
-
-PathsD generateSparseRectangleInfill(float density, PointD min, PointD max,
-                                     float angle = 45.0f) {
-  double step = 1.0f / density;
-  bool leftToRight = true;
-
-  PathsD infill;
-  for (double y = min.y; y <= max.y; y += step) {
-    leftToRight ? infill.push_back({
-                      {min.x, y},
-                      {max.x, y},
-                  })
-                : infill.push_back({
-                      {max.x, y},
-                      {min.x, y},
-                  });
-    leftToRight = !leftToRight;
-  }
-  for (double x = min.x; x <= max.x; x += step) {
-    leftToRight ? infill.push_back({
-                      {x, min.y},
-                      {x, max.y},
-                  })
-                : infill.push_back({
-                      {x, max.y},
-                      {x, min.y},
-                  });
-    leftToRight = !leftToRight;
-  }
-
-  if (angle != 0.0f)
-    rotatePaths(infill, angle);
-  return infill;
-}
-
 void printMatrix(const glm::mat4 &matrix) {
   for (int i = 0; i < 4; ++i) {
     for (int j = 0; j < 4; ++j) {
@@ -123,11 +56,13 @@ int main(int argc, char *argv[]) {
   Shader sliceShader(sliceVertexShader, sliceFragmentShader);
 
   Printer printer;
-  Model model(g_state.fileSettings.inputFile);
+  Slicer slicer(g_state.fileSettings.inputFile);
+  slicer.init(g_state.sliceSettings.layerHeight);
+  Model &model = slicer.getModel();
+
   model.setPosition(printer.getCenter() * ZEROY +
                     glm::vec3(0.0f, model.getHeight() / 2.0f, 0.0f));
-  g_state.sliceSettings.maxSliceIndex =
-      std::ceil<int>(model.getHeight() / g_state.sliceSettings.layerHeight);
+  g_state.sliceSettings.maxSliceIndex = slicer.getLayerCount();
 
   PerspectiveCamera camera(0.0f, 45.0f, 300.0f);
   OrthographicCamera topDownCamera(0.0f, 0.0f, printer.getSize().y);
@@ -191,9 +126,6 @@ int main(int argc, char *argv[]) {
   window->whileOpen([&]() {
     ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
 
-    if (g_state.windowSettings.showDemoWindow)
-      ImGui::ShowDemoWindow();
-
     ImGui::Begin("Control Panel");
     {
       if (ImGui::CollapsingHeader("Printer settings")) {
@@ -235,7 +167,7 @@ int main(int argc, char *argv[]) {
 
       if (ImGui::CollapsingHeader("Slice settings")) {
         if (ImGui::SliderInt("Slice Index", &g_state.sliceSettings.sliceIndex,
-                             1, g_state.sliceSettings.maxSliceIndex)) {
+                             1, slicer.getLayerCount())) {
           printer.setSliceHeight((g_state.sliceSettings.sliceIndex - 1) *
                                  g_state.sliceSettings.layerHeight);
         }
@@ -268,150 +200,22 @@ int main(int argc, char *argv[]) {
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+        Logger::info("Creating slices");
+        slicer.createSlices(g_state.sliceSettings.layerHeight);
 
-        Logger::info("Slicing model");
-        g_state.data.slices.clear();
-        g_state.data.slices.resize(g_state.sliceSettings.maxSliceIndex);
+        Logger::info("Creating walls");
+        slicer.createWalls(g_state.sliceSettings.shellCount,
+                           g_state.printerSettings.nozzleDiameter);
 
-        auto layerHeight = g_state.sliceSettings.layerHeight;
-        for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
-          Logger::debug("Slicing layer {}", i);
-          auto slice = model.getSlice(layerHeight / 2.0f + layerHeight * i);
-          PathsD perimeter = slice.getShells().front();
+        Logger::info("Creating fill and infill");
+        slicer.createFillAndInfill(
+            g_state.printerSettings.nozzleDiameter,
+            g_state.sliceSettings.floorCount, g_state.sliceSettings.roofCount,
+            g_state.sliceSettings.infillDensity / 100.0f, printer.getSize());
 
-          PathsD lastShell;
-          for (int j = 0; j < g_state.sliceSettings.shellCount; ++j) {
-            lastShell = InflatePaths(perimeter,
-                                     -printer.getNozzle() / 2.0f -
-                                         printer.getNozzle() * j,
-                                     JoinType::Miter, EndType::Polygon);
-            g_state.data.slices[i].addShell(closePathsD(lastShell));
-          }
-        }
-
-        Logger::info("Generating infill and floors/roofs");
-        for (int i = 0; i < g_state.sliceSettings.maxSliceIndex; ++i) {
-          Logger::debug("Generating infill for layer {}", i);
-          std::vector<PathsD> infill;
-          // first g_state.sliceSettings.floorCount layers are always solid
-          if (i < g_state.sliceSettings.floorCount ||
-              i >= g_state.sliceSettings.maxSliceIndex -
-                       g_state.sliceSettings.roofCount) {
-            PathsD fill = generateConcentricFill(
-                g_state.printerSettings.nozzleDiameter,
-                g_state.data.slices[i].getShells().back());
-            g_state.data.slices[i].addFill(fill);
-            continue;
-          }
-
-          // Since we know we are not in the first n layers, we can assume there
-          // are always n layers below the current one
-
-          // Find floor sections
-          PathsD floor = g_state.data.slices[i - 1].getInnermostShell();
-          for (int j = 2; j <= g_state.sliceSettings.floorCount; ++j) {
-            floor =
-                Intersect(floor, g_state.data.slices[i - j].getInnermostShell(),
-                          FillRule::EvenOdd);
-          }
-          floor = Difference(g_state.data.slices[i].getInnermostShell(), floor,
-                             FillRule::EvenOdd);
-          g_state.data.slices[i].addFill(generateConcentricFill(
-              g_state.printerSettings.nozzleDiameter, floor));
-
-          // Find roof sections
-          PathsD roof = g_state.data.slices[i + 1].getInnermostShell();
-          for (int j = 2; j <= g_state.sliceSettings.roofCount; ++j) {
-            roof =
-                Intersect(roof, g_state.data.slices[i + j].getInnermostShell(),
-                          FillRule::EvenOdd);
-          }
-          roof = Difference(g_state.data.slices[i].getInnermostShell(), roof,
-                            FillRule::EvenOdd);
-          g_state.data.slices[i].addFill(generateConcentricFill(
-              g_state.printerSettings.nozzleDiameter, roof));
-
-          // Find infill sections
-          auto section = Difference(g_state.data.slices[i].getInnermostShell(),
-                                    Union(floor, roof, FillRule::EvenOdd),
-                                    FillRule::EvenOdd);
-
-          PathsD infillRaw = generateSparseRectangleInfill(
-              g_state.sliceSettings.infillDensity / 100.0f, {0.0f, 0.0f},
-              {printer.getSize().x, printer.getSize().z});
-
-          ClipperD clipper;
-          clipper.AddClip(section);
-          clipper.AddOpenSubject(infillRaw);
-          PathsD infillClosed, infillOpen;
-          clipper.Execute(ClipType::Intersection, FillRule::EvenOdd,
-                          infillClosed, infillOpen);
-
-          infill.push_back(infillOpen);
-          for (auto &fill : infill)
-            g_state.data.slices[i].addInfill(fill);
-        }
-
-        Logger::info("Generating support structures");
-        for (int i = g_state.sliceSettings.maxSliceIndex - 1; i >= 0; --i) {
-          Logger::debug("Generating support for layer {}", i);
-          if (i == g_state.sliceSettings.maxSliceIndex - 1) {
-            g_state.data.slices[i].addSupport(PathsD());
-            g_state.data.supportAreas.emplace_back();
-            continue;
-          }
-
-          ClipperD clipper;
-          clipper.AddSubject(g_state.data.slices[i + 1].getPerimeter());
-          clipper.AddSubject(g_state.data.supportAreas.front());
-          PathsD previousPerimeterAndSupport;
-          clipper.Execute(ClipType::Union, FillRule::EvenOdd,
-                          previousPerimeterAndSupport);
-
-          float a = std::min(g_state.printerSettings.nozzleDiameter / 2.0f,
-                             layerHeight);
-          PathsD dilatedPerimeters =
-              InflatePaths(g_state.data.slices[i].getPerimeter(),
-                           g_state.printerSettings.nozzleDiameter * 3.0f,
-                           JoinType::Miter, EndType::Polygon);
-
-          auto supportArea = Difference(previousPerimeterAndSupport,
-                                        dilatedPerimeters, FillRule::EvenOdd);
-
-          g_state.data.supportAreas.insert(g_state.data.supportAreas.begin(),
-                                           supportArea);
-          supportArea = InflatePaths(
-              supportArea, g_state.printerSettings.nozzleDiameter * 3.0f,
-              JoinType::Miter, EndType::Polygon);
-          supportArea =
-              Difference(supportArea, dilatedPerimeters, FillRule::EvenOdd);
-
-          PathsD lastLayerSupport = Difference(
-              g_state.data.slices[i + 1].getPerimeter(),
-              g_state.data.slices[i].getPerimeter(), FillRule::EvenOdd);
-          supportArea =
-              Difference(supportArea, lastLayerSupport, FillRule::EvenOdd);
-
-          PathsD supportInfill;
-          if (i == 0)
-            supportInfill = generateConcentricFill(
-                g_state.printerSettings.nozzleDiameter, supportArea);
-          else
-            supportInfill = generateSparseRectangleInfill(
-                g_state.sliceSettings.infillDensity / 100.0f, {0.0f, 0.0f},
-                {printer.getSize().x, printer.getSize().z}, 0.0f);
-
-          clipper.Clear();
-          clipper.AddClip(supportArea);
-          clipper.AddOpenSubject(supportInfill);
-          PathsD supportAreaOpen, supportAreaClosed;
-          clipper.Execute(ClipType::Intersection, FillRule::EvenOdd,
-                          supportAreaClosed, supportAreaOpen);
-
-          // g_state.data.slices[i].addSupport(closePathsD(lastLayerSupport));
-          g_state.data.slices[i].addSupport(closePathsD(supportArea));
-          g_state.data.slices[i].addSupport(supportAreaOpen);
-        }
+        Logger::info("Creating support");
+        slicer.createSupport(g_state.printerSettings.nozzleDiameter,
+                             g_state.sliceSettings.infillDensity / 100.0f);
         Logger::info("Slicing complete");
       }
 
@@ -466,7 +270,8 @@ int main(int argc, char *argv[]) {
         g_state.windowSettings.sliceViewFocused = ImGui::IsWindowFocused();
 
         sliceBuffer.bind();
-        if (!g_state.data.slices.empty()) {
+        // if (!g_state.data.slices.empty()) {
+        if (slicer.hasSlices()) {
           const int width = ImGui::GetContentRegionAvail().x;
           const int height = ImGui::GetContentRegionAvail().y;
 
@@ -483,8 +288,11 @@ int main(int argc, char *argv[]) {
           sliceBuffer.clear(glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
           sliceShader.setBool("useShading", false);
 
-          g_state.data.slices[g_state.sliceSettings.sliceIndex - 1].render(
-              sliceShader, position, g_state.windowSettings.sliceScale);
+          // g_state.data.slices[g_state.sliceSettings.sliceIndex - 1].render(
+          //     sliceShader, position, g_state.windowSettings.sliceScale);
+
+          slicer.getSlice(g_state.sliceSettings.sliceIndex - 1)
+              .render(sliceShader, position, g_state.windowSettings.sliceScale);
         }
         sliceBuffer.unbind();
 

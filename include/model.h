@@ -47,6 +47,7 @@ public:
   float *getScalePtr();
 
   float getHeight();
+  size_t getLayerCount(float layerheight) const;
 
   Slice getSlice(double sliceHeight);
 
