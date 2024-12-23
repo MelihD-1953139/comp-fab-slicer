@@ -12,6 +12,12 @@ enum AdhesionTypes {
   Count,
 };
 
+enum BrimLocation {
+  Outside,
+  Inside,
+  Both,
+};
+
 struct State {
   using PathsD = Clipper2Lib::PathsD;
   struct {
@@ -31,8 +37,10 @@ struct State {
 
     bool enableSupport = true;
 
-    AdhesionTypes adhesionType = AdhesionTypes::Brim;
+    AdhesionTypes adhesionType = Brim;
+    BrimLocation brimLocation = Outside;
     int brimLineCount = 20;
+
   } sliceSettings;
   struct {
     bool dropDown = true;

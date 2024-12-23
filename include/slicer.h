@@ -121,7 +121,7 @@ public:
   void createSupport(float nozzleDiameter, float density);
 
   // Adhesion
-  void createBrim(int lineCount, float lineWidth);
+  void createBrim(BrimLocation brimLocation, int lineCount, float lineWidth);
 
 private:
   std::unique_ptr<Model> m_model;

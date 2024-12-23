@@ -9,6 +9,7 @@
 #include "state.h"
 #include "utils.h"
 
+#include <algorithm>
 #include <hfs/hfs_format.h>
 #include <memory>
 
@@ -29,10 +30,8 @@ void Slicer::init(float layerHeight) {
 void Slicer::createSlices(float layerHeight) {
   m_layerCount = m_model->getLayerCount(layerHeight);
   m_slices.clear();
-  Nexus::Logger::info("Creating {} slices", m_layerCount);
 
   for (size_t i = 0; i < m_layerCount; ++i) {
-    Nexus::Logger::debug("Creating slice {}", i);
     auto sliceHeight = layerHeight / 2.0f + layerHeight * i + 1e-15;
     m_slices.push_back(m_model->getSlice(sliceHeight));
   }
@@ -154,12 +153,29 @@ void Slicer::createSupport(float nozzleDiameter, float density) {
   }
 }
 
-void Slicer::createBrim(int lineCount, float lineWidth) {
+void Slicer::createBrim(BrimLocation brimLocation, int lineCount,
+                        float lineWidth) {
   auto &slice = m_slices.front();
   const PathsD &perimeter = slice.getPerimeter();
 
   for (int i = 1; i <= lineCount; ++i) {
-    slice.addSupport(closePathsD(InflatePaths(
-        perimeter, lineWidth * i, JoinType::Round, EndType::Polygon)));
+
+    PathsD brim = InflatePaths(perimeter, lineWidth * i, JoinType::Round,
+                               EndType::Polygon);
+
+    auto it = std::remove_if(brim.begin(), brim.end(),
+                             [&](const PathD &path) -> bool {
+                               switch (brimLocation) {
+                               case Outside:
+                                 return !IsPositive(path);
+                               case Inside:
+                                 return IsPositive(path);
+                               case Both:
+                                 return false;
+                               }
+                             });
+    brim.erase(it, brim.end());
+
+    slice.addSupport(closePathsD(brim));
   }
 }
