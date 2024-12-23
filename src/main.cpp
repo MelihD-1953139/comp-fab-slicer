@@ -1,13 +1,10 @@
 #include "camera.h"
 #include "framebuffer.h"
 #include "gcodeWriter.h"
-#include "glm/ext/matrix_transform.hpp"
-#include "glm/fwd.hpp"
 #include "printer.h"
 #include "resources.h"
 #include "slicer.h"
 #include "state.h"
-#include "utils.h"
 
 #include <Nexus.h>
 #include <Nexus/Log.h>
@@ -17,6 +14,7 @@
 #include <clipper2/clipper.offset.h>
 #include <cmath>
 #include <cstdint>
+#include <glm/fwd.hpp>
 #include <glm/glm.hpp>
 #include <imgui.h>
 #include <memory>
@@ -197,6 +195,20 @@ int main(int argc, char *argv[]) {
           g_state.sliceSettings.infillDensity =
               std::clamp(g_state.sliceSettings.infillDensity, 0.0f, 100.0f);
         }
+        ImGui::Checkbox("Enable support", &g_state.sliceSettings.enableSupport);
+        const char *adhesionTypes[] = {"None", "Brim", "Skirt", "Raft"};
+        ImGui::Combo(
+            "Build plate adhesion",
+            reinterpret_cast<int *>(&g_state.sliceSettings.adhesionType),
+            adhesionTypes, IM_ARRAYSIZE(adhesionTypes));
+        switch (g_state.sliceSettings.adhesionType) {
+        case AdhesionTypes::Brim:
+          ImGui::InputInt("Brim line count",
+                          &g_state.sliceSettings.brimLineCount);
+          break;
+        default:
+          break;
+        }
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
@@ -213,9 +225,19 @@ int main(int argc, char *argv[]) {
             g_state.sliceSettings.floorCount, g_state.sliceSettings.roofCount,
             g_state.sliceSettings.infillDensity / 100.0f, printer.getSize());
 
-        Logger::info("Creating support");
-        slicer.createSupport(g_state.printerSettings.nozzleDiameter,
-                             g_state.sliceSettings.infillDensity / 100.0f);
+        if (g_state.sliceSettings.enableSupport) {
+          Logger::info("Creating support");
+          slicer.createSupport(g_state.printerSettings.nozzleDiameter,
+                               g_state.sliceSettings.infillDensity / 100.0f);
+        }
+
+        switch (g_state.sliceSettings.adhesionType) {
+        case AdhesionTypes::Brim:
+          slicer.createBrim(g_state.sliceSettings.brimLineCount,
+                            g_state.printerSettings.nozzleDiameter);
+        default:
+          break;
+        }
         Logger::info("Slicing complete");
       }
 

@@ -6,6 +6,7 @@
 #include "clipper2/clipper.offset.h"
 #include "glm/ext/vector_int2.hpp"
 #include "model.h"
+#include "state.h"
 #include "utils.h"
 
 #include <hfs/hfs_format.h>
@@ -45,7 +46,7 @@ void Slicer::createWalls(int wallCount, float nozzleDiameter) {
 
     for (size_t j = 0; j < wallCount; ++j) {
       float delta = -nozzleDiameter / 2.0f - nozzleDiameter * j;
-      PathsD wall = InflatePaths(objectPerimeter, delta, JoinType::Miter,
+      PathsD wall = InflatePaths(objectPerimeter, delta, JoinType::Round,
                                  EndType::Polygon);
       slice.addShell(closePathsD(wall));
     }
@@ -122,7 +123,7 @@ void Slicer::createSupport(float nozzleDiameter, float density) {
               previousSliceIT->getSupportArea(), FillRule::EvenOdd);
 
     auto dilatedPerimeter =
-        InflatePaths(it->getPerimeter(), nozzleDiameter * 3.0f, JoinType::Miter,
+        InflatePaths(it->getPerimeter(), nozzleDiameter * 3.0f, JoinType::Round,
                      EndType::Polygon);
 
     auto supportArea =
@@ -150,5 +151,15 @@ void Slicer::createSupport(float nozzleDiameter, float density) {
                       support);
       it->addSupport(support);
     }
+  }
+}
+
+void Slicer::createBrim(int lineCount, float lineWidth) {
+  auto &slice = m_slices.front();
+  const PathsD &perimeter = slice.getPerimeter();
+
+  for (int i = 1; i <= lineCount; ++i) {
+    slice.addSupport(closePathsD(InflatePaths(
+        perimeter, lineWidth * i, JoinType::Round, EndType::Polygon)));
   }
 }

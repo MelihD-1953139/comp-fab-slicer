@@ -3,6 +3,7 @@
 #include "glm/ext/matrix_transform.hpp"
 #include "model.h"
 #include "slice.h"
+#include "state.h"
 #include "utils.h"
 
 #include <memory>
@@ -30,11 +31,11 @@ inline Clipper2Lib::PathsD
 generateConcentricFill(float nozzleDiameter,
                        const Clipper2Lib::PathsD &lastShell) {
   std::vector<Clipper2Lib::PathsD> fills{closePathsD(
-      InflatePaths(lastShell, -nozzleDiameter, Clipper2Lib::JoinType::Miter,
+      InflatePaths(lastShell, -nozzleDiameter, Clipper2Lib::JoinType::Round,
                    Clipper2Lib::EndType::Polygon))};
   while (fills.back().size() > 0) {
     fills.push_back(closePathsD(InflatePaths(fills.back(), -nozzleDiameter,
-                                             Clipper2Lib::JoinType::Miter,
+                                             Clipper2Lib::JoinType::Round,
                                              Clipper2Lib::EndType::Polygon)));
   }
 
@@ -118,6 +119,9 @@ public:
   void createFillAndInfill(float nozzleDiameter, int floorCount, int roofCount,
                            float infillDensity, const glm::ivec2 &printerSize);
   void createSupport(float nozzleDiameter, float density);
+
+  // Adhesion
+  void createBrim(int lineCount, float lineWidth);
 
 private:
   std::unique_ptr<Model> m_model;

@@ -4,6 +4,14 @@
 #include <clipper2/clipper.h>
 #include <vector>
 
+enum AdhesionTypes {
+  None,
+  Brim,
+  Skirt,
+  Raft,
+  Count,
+};
+
 struct State {
   using PathsD = Clipper2Lib::PathsD;
   struct {
@@ -20,6 +28,11 @@ struct State {
 
     float retractDistance = 5.0f;
     float minimumRetractDistance = 1.5f;
+
+    bool enableSupport = true;
+
+    AdhesionTypes adhesionType = AdhesionTypes::Brim;
+    int brimLineCount = 20;
   } sliceSettings;
   struct {
     bool dropDown = true;
