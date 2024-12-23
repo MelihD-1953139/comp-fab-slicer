@@ -1,5 +1,4 @@
 #include "slicer.h"
-#include "Nexus/Log.h"
 #include "clipper2/clipper.core.h"
 #include "clipper2/clipper.engine.h"
 #include "clipper2/clipper.h"
@@ -177,5 +176,40 @@ void Slicer::createBrim(BrimLocation brimLocation, int lineCount,
     brim.erase(it, brim.end());
 
     slice.addSupport(closePathsD(brim));
+  }
+}
+
+PathsD getOutermost(const PathsD &paths) {
+  if (paths.empty())
+    return PathsD();
+
+  auto outermostPath =
+      std::max_element(paths.begin(), paths.end(),
+                       [](const PathD &lhs, const PathD &rhs) -> bool {
+                         return Area(lhs) < Area(rhs);
+                       });
+  return {*outermostPath};
+}
+void Slicer::createSkirt(int lineCount, int height, float distance,
+                         float lineWidth) {
+
+  height = std::min(height, (int)m_slices.size());
+
+  // First layer gets `lineCount` lines
+  auto &slice = m_slices.front();
+  auto perimeter = slice.getPerimeter();
+  auto outerMostPerimeter = getOutermost(perimeter);
+  for (int i = 0; i < lineCount; ++i) {
+    slice.addSupport(
+        closePathsD(InflatePaths(outerMostPerimeter, distance + i * lineWidth,
+                                 JoinType::Round, EndType::Polygon)));
+  }
+
+  auto skirt = InflatePaths(outerMostPerimeter, distance, JoinType::Round,
+                            EndType::Polygon);
+  // `height` - 1 layers get the first skirt aswell
+  for (auto sliceIt = m_slices.begin() + 1; sliceIt < m_slices.begin() + height;
+       ++sliceIt) {
+    sliceIt->addSupport(skirt);
   }
 }

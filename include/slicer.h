@@ -1,5 +1,5 @@
 #pragma once
-#include "Nexus/Log.h"
+
 #include "glm/ext/matrix_transform.hpp"
 #include "model.h"
 #include "slice.h"
@@ -122,6 +122,7 @@ public:
 
   // Adhesion
   void createBrim(BrimLocation brimLocation, int lineCount, float lineWidth);
+  void createSkirt(int lineCount, int height, float distance, float lineWidth);
 
 private:
   std::unique_ptr<Model> m_model;

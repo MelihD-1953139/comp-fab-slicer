@@ -41,6 +41,10 @@ struct State {
     BrimLocation brimLocation = Outside;
     int brimLineCount = 20;
 
+    int skirtHeight = 3;
+    int skirtLineCount = 3;
+    float skirtDistance = 10.0f;
+
   } sliceSettings;
   struct {
     bool dropDown = true;

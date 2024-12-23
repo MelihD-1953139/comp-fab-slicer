@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
             reinterpret_cast<int *>(&g_state.sliceSettings.adhesionType),
             adhesionTypes, IM_ARRAYSIZE(adhesionTypes));
         switch (g_state.sliceSettings.adhesionType) {
-        case AdhesionTypes::Brim: {
+        case Brim: {
           ImGui::InputInt("Brim line count",
                           &g_state.sliceSettings.brimLineCount);
           const char *brimLocations[] = {"Outside only", "Inside only",
@@ -212,6 +212,14 @@ int main(int argc, char *argv[]) {
               reinterpret_cast<int *>(&g_state.sliceSettings.brimLocation),
               brimLocations, IM_ARRAYSIZE(brimLocations));
           break;
+        }
+        case Skirt: {
+          ImGui::InputInt("Skirt lineCount",
+                          &g_state.sliceSettings.skirtLineCount);
+          ImGui::InputInt("Skirt height", &g_state.sliceSettings.skirtHeight);
+          ImGui::InputFloat("Skirt distance",
+                            &g_state.sliceSettings.skirtDistance, 0.0f, 0.0f,
+                            "%.1f mm");
         }
         default:
           break;
@@ -243,6 +251,13 @@ int main(int argc, char *argv[]) {
           slicer.createBrim(g_state.sliceSettings.brimLocation,
                             g_state.sliceSettings.brimLineCount,
                             g_state.printerSettings.nozzleDiameter);
+          break;
+        case Skirt:
+          slicer.createSkirt(g_state.sliceSettings.skirtLineCount,
+                             g_state.sliceSettings.skirtHeight,
+                             g_state.sliceSettings.skirtDistance,
+                             g_state.printerSettings.nozzleDiameter);
+          break;
         default:
           break;
         }
