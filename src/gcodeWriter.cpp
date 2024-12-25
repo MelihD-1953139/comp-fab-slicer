@@ -6,8 +6,7 @@
 #include <iomanip>
 #include <ios>
 
-GcodeWriter::GcodeWriter(const char *filepath,
-                         const std::vector<Slice> &slices) {
+GcodeWriter::GcodeWriter(const char *filepath, const Slicer &slicer) {
   extrusion = 0;
   layerHeight = g_state.sliceSettings.layerHeight;
 
@@ -21,8 +20,8 @@ GcodeWriter::GcodeWriter(const char *filepath,
   NewGcodeFile("output.gcode");
   WriteHeader();
   m_file << "M107 ;turn off fan\n";
-  m_file << ";LAYER_COUNT:" << slices.size() << "\n";
-  for (int i = 0; i < slices.size(); i++) {
+  m_file << ";LAYER_COUNT:" << slicer.getLayerCount() << "\n";
+  for (int i = 0; i < slicer.getLayerCount(); i++) {
     m_file << ";LAYER:" << i << "\n";
     layerHeight = g_state.sliceSettings.layerHeight * (i + 1);
     if (i == 2) {
@@ -30,7 +29,7 @@ GcodeWriter::GcodeWriter(const char *filepath,
       g_state.printerSettings.wallSpeed = wallspeed;
       g_state.printerSettings.infillSpeed = infillspeed;
     }
-    WriteSlice(slices[i]);
+    WriteSlice(slicer.getSlice(i));
   }
   WriteFooter();
   CloseGcodeFile();

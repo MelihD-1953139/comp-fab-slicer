@@ -2,6 +2,7 @@
 
 #include "clipper2/clipper.core.h"
 #include "slice.h"
+#include "slicer.h"
 #include <fstream>
 #include <vector>
 
@@ -9,7 +10,7 @@
 
 class GcodeWriter {
 public:
-  GcodeWriter(const char *filename, const std::vector<Slice> &slices);
+  GcodeWriter(const char *filename, const Slicer &slicer);
 
 private:
   void NewGcodeFile(const char *filename);

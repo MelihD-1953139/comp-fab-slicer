@@ -43,6 +43,7 @@ public:
   // assumes the shell is closed
   void addShell(const PathsD &shell);
   void addFill(const PathsD &fill);
+  void setFillArea(const PathsD &fillArea) { m_fillArea = fillArea; }
   void addInfill(const PathsD &infill);
   void addSupport(const PathsD &support);
   void setSupportArea(const PathsD supportArea) { m_supportArea = supportArea; }
@@ -51,6 +52,7 @@ public:
   const std::vector<PathsD> &getShells() const { return m_shells; }
   const PathsD &getInnermostShell() const { return m_shells.back(); }
   const std::vector<PathsD> &getFill() const { return m_fill; }
+  const PathsD &getFillArea() const { return m_fillArea; }
   const std::vector<PathsD> &getInfill() const { return m_infill; }
   const std::vector<PathsD> &getSupport() const { return m_support; }
   const PathsD &getSupportArea() const { return m_supportArea; }
@@ -62,6 +64,7 @@ private:
   std::vector<PathsD> m_fill;
   std::vector<PathsD> m_support;
   PathsD m_supportArea;
+  PathsD m_fillArea;
 
   std::vector<uint> m_VAOs;
 

@@ -55,7 +55,8 @@ int main(int argc, char *argv[]) {
 
   Printer printer;
   Slicer slicer(g_state.fileSettings.inputFile);
-  slicer.init(g_state.sliceSettings.layerHeight);
+  slicer.init(g_state.sliceSettings.layerHeight,
+              g_state.printerSettings.nozzleDiameter);
   Model &model = slicer.getModel();
 
   model.setPosition(printer.getCenter() * ZEROY +
@@ -186,77 +187,95 @@ int main(int argc, char *argv[]) {
               std::clamp(g_state.sliceSettings.shellCount, 1, 10);
         }
 
+        ImGui::SeparatorText("Floors and Roofs");
+
         ImGui::InputInt("Floor count", &g_state.sliceSettings.floorCount);
         ImGui::InputInt("Roof count", &g_state.sliceSettings.roofCount);
 
+        ImGui::Combo("Fill type",
+                     reinterpret_cast<int *>(&g_state.sliceSettings.fillType),
+                     slicer.fillTypes, FillType::FillTypeCount);
+
+        ImGui::SeparatorText("Infill");
         if (ImGui::InputFloat("Infill Density",
                               &g_state.sliceSettings.infillDensity, 0.0f, 0.0f,
                               "%.2f %%")) {
           g_state.sliceSettings.infillDensity =
               std::clamp(g_state.sliceSettings.infillDensity, 0.0f, 100.0f);
+          if (g_state.sliceSettings.infillDensity == 100.0f) {
+            g_state.sliceSettings.floorCount = 999999;
+            g_state.sliceSettings.roofCount = 0;
+          }
         }
-        ImGui::Checkbox("Enable support", &g_state.sliceSettings.enableSupport);
-        const char *adhesionTypes[] = {"None", "Brim", "Skirt", "Raft"};
-        ImGui::Combo(
-            "Build plate adhesion",
-            reinterpret_cast<int *>(&g_state.sliceSettings.adhesionType),
-            adhesionTypes, IM_ARRAYSIZE(adhesionTypes));
-        switch (g_state.sliceSettings.adhesionType) {
-        case Brim: {
-          ImGui::InputInt("Brim line count",
-                          &g_state.sliceSettings.brimLineCount);
-          const char *brimLocations[] = {"Outside only", "Inside only",
-                                         "Both sides"};
+        ImGui::SeparatorText("Support");
+        {
+          ImGui::Checkbox("Enable support",
+                          &g_state.sliceSettings.enableSupport);
+        }
+        ImGui::SeparatorText("Bed adhesion");
+        {
+          const char *adhesionTypes[] = {"None", "Brim", "Skirt"};
           ImGui::Combo(
-              "Brim location",
-              reinterpret_cast<int *>(&g_state.sliceSettings.brimLocation),
-              brimLocations, IM_ARRAYSIZE(brimLocations));
-          break;
-        }
-        case Skirt: {
-          ImGui::InputInt("Skirt lineCount",
-                          &g_state.sliceSettings.skirtLineCount);
-          ImGui::InputInt("Skirt height", &g_state.sliceSettings.skirtHeight);
-          ImGui::InputFloat("Skirt distance",
-                            &g_state.sliceSettings.skirtDistance, 0.0f, 0.0f,
-                            "%.1f mm");
-        }
-        default:
-          break;
+              "Build plate adhesion",
+              reinterpret_cast<int *>(&g_state.sliceSettings.adhesionType),
+              adhesionTypes, IM_ARRAYSIZE(adhesionTypes));
+          switch (g_state.sliceSettings.adhesionType) {
+          case Brim: {
+            ImGui::InputInt("Brim line count",
+                            &g_state.sliceSettings.brimLineCount);
+            const char *brimLocations[] = {"Outside only", "Inside only",
+                                           "Both sides"};
+            ImGui::Combo(
+                "Brim location",
+                reinterpret_cast<int *>(&g_state.sliceSettings.brimLocation),
+                brimLocations, IM_ARRAYSIZE(brimLocations));
+            break;
+          }
+          case Skirt: {
+            ImGui::InputInt("Skirt lineCount",
+                            &g_state.sliceSettings.skirtLineCount);
+            ImGui::InputInt("Skirt height", &g_state.sliceSettings.skirtHeight);
+            ImGui::InputFloat("Skirt distance",
+                              &g_state.sliceSettings.skirtDistance, 0.0f, 0.0f,
+                              "%.1f mm");
+          }
+          default:
+            break;
+          }
         }
       }
 
       if (ImGui::Button("Slice", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         Logger::info("Creating slices");
-        slicer.createSlices(g_state.sliceSettings.layerHeight);
+        slicer.createSlices();
 
         Logger::info("Creating walls");
-        slicer.createWalls(g_state.sliceSettings.shellCount,
-                           g_state.printerSettings.nozzleDiameter);
+        slicer.createWalls(g_state.sliceSettings.shellCount);
 
-        Logger::info("Creating fill and infill");
-        slicer.createFillAndInfill(
-            g_state.printerSettings.nozzleDiameter,
-            g_state.sliceSettings.floorCount, g_state.sliceSettings.roofCount,
-            g_state.sliceSettings.infillDensity / 100.0f, printer.getSize());
+        Logger::info("Creating fill");
+        slicer.createFill(g_state.sliceSettings.fillType,
+                          g_state.sliceSettings.floorCount,
+                          g_state.sliceSettings.roofCount);
+
+        if (g_state.sliceSettings.infillDensity > 0.0f) {
+          Logger::info("Creating infill");
+          slicer.createInfill(g_state.sliceSettings.infillDensity / 100.0f);
+        }
 
         if (g_state.sliceSettings.enableSupport) {
           Logger::info("Creating support");
-          slicer.createSupport(g_state.printerSettings.nozzleDiameter,
-                               g_state.sliceSettings.infillDensity / 100.0f);
+          slicer.createSupport(g_state.sliceSettings.infillDensity / 100.0f);
         }
 
         switch (g_state.sliceSettings.adhesionType) {
         case AdhesionTypes::Brim:
           slicer.createBrim(g_state.sliceSettings.brimLocation,
-                            g_state.sliceSettings.brimLineCount,
-                            g_state.printerSettings.nozzleDiameter);
+                            g_state.sliceSettings.brimLineCount);
           break;
         case Skirt:
           slicer.createSkirt(g_state.sliceSettings.skirtLineCount,
                              g_state.sliceSettings.skirtHeight,
-                             g_state.sliceSettings.skirtDistance,
-                             g_state.printerSettings.nozzleDiameter);
+                             g_state.sliceSettings.skirtDistance);
           break;
         default:
           break;
@@ -266,8 +285,7 @@ int main(int argc, char *argv[]) {
 
       if (ImGui::Button("Export to g-code",
                         ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-        GcodeWriter writer(g_state.fileSettings.outputFile,
-                           g_state.data.slices);
+        GcodeWriter writer(g_state.fileSettings.outputFile, slicer);
       }
     }
     ImGui::End();

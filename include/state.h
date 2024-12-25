@@ -1,22 +1,9 @@
 #pragma once
 
 #include "slice.h"
+#include "slicer.h"
 #include <clipper2/clipper.h>
 #include <vector>
-
-enum AdhesionTypes {
-  None,
-  Brim,
-  Skirt,
-  Raft,
-  Count,
-};
-
-enum BrimLocation {
-  Outside,
-  Inside,
-  Both,
-};
 
 struct State {
   using PathsD = Clipper2Lib::PathsD;
@@ -36,6 +23,8 @@ struct State {
     float minimumRetractDistance = 1.5f;
 
     bool enableSupport = true;
+
+    FillType fillType = Lines;
 
     AdhesionTypes adhesionType = Brim;
     BrimLocation brimLocation = Outside;
