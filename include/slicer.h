@@ -79,7 +79,8 @@ generateLineFill(float nozzleDiameter, const Clipper2Lib::PathsD &perimeter,
 }
 
 inline Clipper2Lib::PathsD
-generateSparseRectangleInfill(float density, const Clipper2Lib::PathsD &area,
+generateSparseRectangleInfill(float lineWidth, float density,
+                              const Clipper2Lib::PathsD &area,
                               float angle = 45.0f) {
   using namespace Clipper2Lib;
   auto [minX, minY, maxX, maxY] = GetBounds(area);
@@ -89,11 +90,12 @@ generateSparseRectangleInfill(float density, const Clipper2Lib::PathsD &area,
   auto [rotatedMinX, rotatedMinY, rotatedMaxX, rotatedMaxY] = GetBounds(
       InflatePaths(area, diagonal, JoinType::Miter, EndType::Polygon));
 
-  double step = 1.0f / density;
+  double step = (2.0f * lineWidth) / density;
   bool leftToRight = true;
 
+  // TODO try to start at 0.5 step and end 0.5 step earlier
   Clipper2Lib::PathsD infill;
-  for (double y = rotatedMinY; y <= rotatedMaxY; y += step) {
+  for (double y = rotatedMinY + step / 2.0f; y <= rotatedMaxY; y += step) {
     if (leftToRight) {
       infill.push_back({
           {rotatedMinX, y},
@@ -108,7 +110,7 @@ generateSparseRectangleInfill(float density, const Clipper2Lib::PathsD &area,
 
     leftToRight = !leftToRight;
   }
-  for (double x = rotatedMinX; x <= rotatedMaxX; x += step) {
+  for (double x = rotatedMinX + step / 2.0f; x <= rotatedMaxX; x += step) {
     if (leftToRight) {
       infill.push_back({
           {x, rotatedMinY},
@@ -130,17 +132,27 @@ generateSparseRectangleInfill(float density, const Clipper2Lib::PathsD &area,
   ClipperD clipper;
   clipper.AddClip(area);
   clipper.AddOpenSubject(infill);
-  PathsD discard, result;
-  clipper.Execute(ClipType::Intersection, FillRule::EvenOdd, discard, result);
+  PathsD discard;
+  // clipper.Execute(ClipType::Intersection, FillRule::EvenOdd, discard,
+  // infill);
 
-  return result;
+  return infill;
 }
 
 enum FillType {
   NoFill,
   Concentric,
-  Lines,
-  FillTypeCount,
+  LinesFill,
+  FillCount,
+};
+
+enum InfillType {
+  NoInfill,
+  LinesInfill,
+  Grid,
+  Triangle,
+  TriHexagon,
+  InfillCount,
 };
 
 enum AdhesionTypes {
@@ -148,13 +160,14 @@ enum AdhesionTypes {
   Brim,
   Skirt,
   Raft,
-  Count,
+  AdhesionCount,
 };
 
 enum BrimLocation {
   Outside,
   Inside,
   Both,
+  BrimLocationCount,
 };
 
 class Slicer {
@@ -174,14 +187,38 @@ public:
   void createSlices();
   void createWalls(int wallCount);
   void createFill(FillType fillType, int floorCount, int roofCount);
-  void createInfill(float density);
+  void createInfill(InfillType infillType, float density);
   void createSupport(float density);
 
   // Adhesion
   void createBrim(BrimLocation brimLocation, int lineCount);
   void createSkirt(int lineCount, int height, float distance);
 
-  const char *fillTypes[FillTypeCount]{"None", "Concentric", "Lines"};
+  const char *fillTypes[FillType::FillCount]{"None", "Concentric", "Lines"};
+  const char *infillTypes[InfillType::InfillCount]{"None", "Lines", "Grid",
+                                                   "Triangle", "Tri-Hexagon"};
+
+private:
+  double
+  getShiftOffsetFromInfillOriginAndRotation(const Clipper2Lib::PathsD &area,
+                                            const float angle);
+  void generateLineInfill(Clipper2Lib::PathsD &infillResult,
+                          const Clipper2Lib::PathsD &area,
+                          const double lineDistance, const float angle,
+                          float shift = 0.0f);
+  void generateGridInfill(Clipper2Lib::PathsD &infillResult,
+                          const Clipper2Lib::PathsD &area,
+                          const double lineDistance, const float angle,
+                          float shift = 0.0f);
+
+  void generateTriangleInfill(Clipper2Lib::PathsD &infillResult,
+                              const Clipper2Lib::PathsD &area,
+                              const double lineDistance, const float angle,
+                              float shift = 0.0f);
+  void generateTriHexagonInfill(Clipper2Lib::PathsD &infillResult,
+                                const Clipper2Lib::PathsD &area,
+                                const double lineDistance, const float angle,
+                                float shift = 0.0f);
 
 private:
   std::unique_ptr<Model> m_model;

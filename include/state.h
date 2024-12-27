@@ -24,7 +24,8 @@ struct State {
 
     bool enableSupport = true;
 
-    FillType fillType = Lines;
+    FillType fillType = LinesFill;
+    InfillType infillType = Grid;
 
     AdhesionTypes adhesionType = Brim;
     BrimLocation brimLocation = Outside;

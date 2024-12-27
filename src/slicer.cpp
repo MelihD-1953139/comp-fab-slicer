@@ -1,4 +1,5 @@
 #include "slicer.h"
+#include "glm/trigonometric.hpp"
 #include "model.h"
 #include "utils.h"
 
@@ -9,6 +10,7 @@
 #include <clipper2/clipper.offset.h>
 #include <hfs/hfs_format.h>
 #include <memory>
+#include <os/lock.h>
 
 using namespace Clipper2Lib;
 
@@ -61,7 +63,7 @@ void Slicer::createFill(FillType fillType, int floorCount, int roofCount) {
   case Concentric:
     fillFunc = generateConcentricFill;
     break;
-  case Lines:
+  case LinesFill:
     fillFunc = generateLineFill;
     break;
   default:
@@ -117,13 +119,47 @@ void Slicer::createFill(FillType fillType, int floorCount, int roofCount) {
   }
 }
 
-void Slicer::createInfill(float density) {
-  for (auto it = m_slices.begin(); it < m_slices.end(); ++it) {
-    auto infillArea = Difference(it->getInnermostShell(), it->getFillArea(),
-                                 FillRule::EvenOdd);
+void Slicer::createInfill(InfillType infillType, float density) {
+  auto infillFunc = &Slicer::generateGridInfill;
+  float lineDistance;
+  float angleEven;
+  float angleOdd;
 
-    auto infill = generateSparseRectangleInfill(density, infillArea);
-    it->addInfill(infill);
+  switch (infillType) {
+  case NoInfill:
+  case InfillCount:
+    return;
+  case LinesInfill:
+    lineDistance = m_lineWidth / density;
+    infillFunc = &Slicer::generateLineInfill;
+    angleEven = 45.0f;
+    angleOdd = -45.0f;
+    break;
+  case Grid:
+    infillFunc = &Slicer::generateGridInfill;
+    lineDistance = (2.0f * m_lineWidth) / density;
+    angleEven = angleOdd = 45.0f;
+    break;
+  case Triangle:
+    infillFunc = &Slicer::generateTriangleInfill;
+    lineDistance = (3.0f * m_lineWidth) / density;
+    angleEven = angleOdd = 45.0f;
+    break;
+  case TriHexagon:
+    infillFunc = &Slicer::generateTriHexagonInfill;
+    lineDistance = (3.0f * m_lineWidth) / density;
+    angleEven = angleOdd = 45.0f;
+    break;
+  }
+
+  for (int i = 0; i < m_slices.size(); ++i) {
+    auto infillArea = Difference(m_slices[i].getInnermostShell(),
+                                 m_slices[i].getFillArea(), FillRule::EvenOdd);
+
+    PathsD infill;
+    (this->*infillFunc)(infill, infillArea, lineDistance,
+                        i % 2 == 0 ? angleEven : angleOdd, 0.0f);
+    m_slices[i].addInfill(infill);
   }
 }
 
@@ -151,7 +187,8 @@ void Slicer::createSupport(float density) {
       auto support = generateConcentricFill(m_lineWidth, supportArea);
       it->addSupport(closePathsD(support));
     } else {
-      auto support = generateSparseRectangleInfill(density, supportArea, 0.0f);
+      auto support = generateSparseRectangleInfill(m_lineWidth, density,
+                                                   supportArea, 0.0f);
       ClipperD clipper;
       clipper.AddClip(supportArea);
       clipper.AddOpenSubject(support);
@@ -180,6 +217,8 @@ void Slicer::createBrim(BrimLocation brimLocation, int lineCount) {
                                case Inside:
                                  return IsPositive(path);
                                case Both:
+                                 return false;
+                               default:
                                  return false;
                                }
                              });
@@ -221,4 +260,78 @@ void Slicer::createSkirt(int lineCount, int height, float distance) {
        ++sliceIt) {
     sliceIt->addSupport(skirt);
   }
+}
+
+double Slicer::getShiftOffsetFromInfillOriginAndRotation(const PathsD &area,
+                                                         const float angle) {
+  auto bounds = GetBounds(area);
+  auto origin = bounds.MidPoint();
+  if (origin.x != 0 || origin.y != 0) {
+    return origin.x * std::cos(glm::radians(angle)) -
+           origin.y * std::sin(glm::radians(angle));
+  }
+  return 0;
+}
+
+void Slicer::generateLineInfill(PathsD &infillResult, const PathsD &area,
+                                const double lineDistance, const float angle,
+                                float shift) {
+  if (lineDistance == 0 || area.empty())
+    return;
+
+  PathsD outline = area;
+  auto bounds = GetBounds(outline);
+  double diagonal = std::sqrt(bounds.Width() * bounds.Width() +
+                              bounds.Height() * bounds.Height());
+  outline = InflatePaths(outline, diagonal, JoinType::Miter, EndType::Polygon);
+  rotatePaths(outline, angle);
+
+  shift +=
+      getShiftOffsetFromInfillOriginAndRotation(area, angle) + lineDistance;
+  if (shift <= 0) {
+    shift = lineDistance - std::fmod(-shift, lineDistance);
+  } else {
+    shift = std::fmod(shift, lineDistance);
+  }
+
+  auto [minX, minY, maxX, maxY] = GetBounds(outline);
+
+  PathsD lines;
+  double y = minY - shift;
+  while (y < maxY - shift) {
+    lines.push_back({{minX - shift, y}, {maxX - shift, y}});
+    y += lineDistance;
+  }
+  rotatePaths(lines, -angle);
+
+  ClipperD clipper;
+  clipper.AddOpenSubject(lines);
+  clipper.AddClip(area);
+  PathsD discard;
+  clipper.Execute(ClipType::Intersection, FillRule::NonZero, discard, lines);
+
+  infillResult.append_range(lines);
+}
+
+void Slicer::generateGridInfill(PathsD &infillResult, const PathsD &area,
+                                const double lineDistance, const float angle,
+                                float shift) {
+  generateLineInfill(infillResult, area, lineDistance, angle + 0);
+  generateLineInfill(infillResult, area, lineDistance, angle + 90);
+}
+
+void Slicer::generateTriangleInfill(PathsD &infillResult, const PathsD &area,
+                                    const double lineDistance,
+                                    const float angle, float shift) {
+  generateLineInfill(infillResult, area, lineDistance, angle);
+  generateLineInfill(infillResult, area, lineDistance, angle + 60);
+  generateLineInfill(infillResult, area, lineDistance, angle + 120);
+}
+void Slicer::generateTriHexagonInfill(PathsD &infillResult, const PathsD &area,
+                                      const double lineDistance,
+                                      const float angle, float shift) {
+  generateLineInfill(infillResult, area, lineDistance, angle);
+  generateLineInfill(infillResult, area, lineDistance, angle + 60);
+  generateLineInfill(infillResult, area, lineDistance, angle + 120,
+                     lineDistance / 2.0f);
 }

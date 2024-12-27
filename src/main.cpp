@@ -112,6 +112,12 @@ int main(int argc, char *argv[]) {
           case GLFW_KEY_KP_SUBTRACT:
             g_state.windowSettings.sliceScale -= 0.5f;
             break;
+          case GLFW_KEY_RIGHT:
+            g_state.sliceSettings.sliceIndex++;
+            break;
+          case GLFW_KEY_LEFT:
+            g_state.sliceSettings.sliceIndex--;
+            break;
           }
         }
         return false;
@@ -149,9 +155,11 @@ int main(int argc, char *argv[]) {
         if (ImGui::Button("Load")) {
           model = Model(g_state.fileSettings.inputFile);
           model.setPosition(printer.getCenter() * ZEROY);
-          g_state.sliceSettings.maxSliceIndex = static_cast<int>(
-              std::ceil(model.getHeight() / g_state.sliceSettings.layerHeight));
-          g_state.sliceSettings.sliceIndex = 1;
+          g_state.sliceSettings.maxSliceIndex =
+              model.getLayerCount(g_state.sliceSettings.layerHeight);
+          g_state.sliceSettings.sliceIndex =
+              std::clamp(g_state.sliceSettings.sliceIndex, 0,
+                         g_state.sliceSettings.maxSliceIndex);
           g_state.data.slices.clear();
           g_state.data.supportAreas.clear();
         }
@@ -194,7 +202,7 @@ int main(int argc, char *argv[]) {
 
         ImGui::Combo("Fill type",
                      reinterpret_cast<int *>(&g_state.sliceSettings.fillType),
-                     slicer.fillTypes, FillType::FillTypeCount);
+                     slicer.fillTypes, FillType::FillCount);
 
         ImGui::SeparatorText("Infill");
         if (ImGui::InputFloat("Infill Density",
@@ -207,6 +215,10 @@ int main(int argc, char *argv[]) {
             g_state.sliceSettings.roofCount = 0;
           }
         }
+        ImGui::Combo("Infill type",
+                     reinterpret_cast<int *>(&g_state.sliceSettings.infillType),
+                     slicer.infillTypes, InfillType::InfillCount);
+
         ImGui::SeparatorText("Support");
         {
           ImGui::Checkbox("Enable support",
@@ -259,7 +271,8 @@ int main(int argc, char *argv[]) {
 
         if (g_state.sliceSettings.infillDensity > 0.0f) {
           Logger::info("Creating infill");
-          slicer.createInfill(g_state.sliceSettings.infillDensity / 100.0f);
+          slicer.createInfill(g_state.sliceSettings.infillType,
+                              g_state.sliceSettings.infillDensity / 100.0f);
         }
 
         if (g_state.sliceSettings.enableSupport) {
