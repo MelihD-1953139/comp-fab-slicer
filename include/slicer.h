@@ -1,147 +1,43 @@
 #pragma once
 
-#include "clipper2/clipper.core.h"
-#include "clipper2/clipper.h"
-#include "glm/ext/matrix_transform.hpp"
 #include "model.h"
 #include "slice.h"
-#include "utils.h"
 
+#include <clipper2/clipper.core.h>
 #include <vector>
 
 inline void rotatePaths(Clipper2Lib::PathsD &paths, float angle) {
-  auto [minx, miny, maxx, maxy] = GetBounds(paths);
-  glm::mat4 model = glm::mat4(1.0f);
-  model = glm::translate(
-      model, glm::vec3((minx + maxx) / 2.0f, 0.0f, (miny + maxy) / 2.0f));
-  model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
-  model = glm::translate(
-      model, -glm::vec3((minx + maxx) / 2.0f, 0.0f, (miny + maxy) / 2.0f));
+  angle = glm::radians(angle);
+  std::array<double, 4> rotation{std::cos(angle), -std::sin(angle),
+                                 std::sin(angle), std::cos(angle)};
+
   for (auto &path : paths) {
     for (auto &point : path) {
-      glm::vec4 p = {point.x, 0.0f, point.y, 1.0f};
-      p = model * p;
-      point.x = p.x;
-      point.y = p.z;
+      const auto x = point.x;
+      const auto y = point.y;
+      point = {x * rotation[0] + y * rotation[1],
+               x * rotation[2] + y * rotation[3]};
     }
   }
 }
+inline void unRotatePaths(Clipper2Lib::PathsD &paths, float angle) {
+  angle = glm::radians(angle);
+  std::array<double, 4> rotation{std::cos(angle), -std::sin(angle),
+                                 std::sin(angle), std::cos(angle)};
 
-inline Clipper2Lib::PathsD
-generateConcentricFill(float nozzleDiameter,
-                       const Clipper2Lib::PathsD &lastShell,
-                       float angle = 0.0f) {
-  std::vector<Clipper2Lib::PathsD> fills{closePathsD(
-      InflatePaths(lastShell, -nozzleDiameter, Clipper2Lib::JoinType::Round,
-                   Clipper2Lib::EndType::Polygon))};
-  while (fills.back().size() > 0) {
-    fills.push_back(closePathsD(InflatePaths(fills.back(), -nozzleDiameter,
-                                             Clipper2Lib::JoinType::Round,
-                                             Clipper2Lib::EndType::Polygon)));
-  }
-
-  Clipper2Lib::PathsD fill;
-  for (auto &paths : fills)
-    fill.append_range(paths);
-
-  return fill;
-}
-
-inline Clipper2Lib::PathsD
-generateLineFill(float nozzleDiameter, const Clipper2Lib::PathsD &perimeter,
-                 float angle = 45.0f) {
-  using namespace Clipper2Lib;
-
-  auto inflatedPerimeter = InflatePaths(perimeter, -nozzleDiameter,
-                                        JoinType::Round, EndType::Polygon);
-
-  auto [minX, minY, maxX, maxY] = GetBounds(inflatedPerimeter);
-  double diagonal = distance({minX, minY}, {maxX, maxY});
-  auto [rotatedMinX, rotatedMinY, rotatedMaxX, rotatedMaxY] =
-      GetBounds(InflatePaths(inflatedPerimeter, diagonal, JoinType::Miter,
-                             EndType::Polygon));
-
-  PathsD lines;
-
-  for (double y = rotatedMinY; y < rotatedMaxY; y += nozzleDiameter) {
-    lines.push_back({{rotatedMinX, y}, {rotatedMaxX, y}});
-  }
-
-  rotatePaths(lines, angle);
-  ClipperD clipper;
-  clipper.AddClip(inflatedPerimeter);
-  clipper.AddOpenSubject(lines);
-  PathsD discard;
-  clipper.Execute(ClipType::Intersection, FillRule::EvenOdd, discard, lines);
-  PathsD result = closePathsD(inflatedPerimeter);
-  result.append_range(lines);
-  return result;
-}
-
-inline Clipper2Lib::PathsD
-generateSparseRectangleInfill(float lineWidth, float density,
-                              const Clipper2Lib::PathsD &area,
-                              float angle = 45.0f) {
-  using namespace Clipper2Lib;
-  auto [minX, minY, maxX, maxY] = GetBounds(area);
-  double diagonal = distance({minX, minY}, {maxX, maxY});
-  if (!angle)
-    diagonal = angle;
-  auto [rotatedMinX, rotatedMinY, rotatedMaxX, rotatedMaxY] = GetBounds(
-      InflatePaths(area, diagonal, JoinType::Miter, EndType::Polygon));
-
-  double step = (2.0f * lineWidth) / density;
-  bool leftToRight = true;
-
-  // TODO try to start at 0.5 step and end 0.5 step earlier
-  Clipper2Lib::PathsD infill;
-  for (double y = rotatedMinY + step / 2.0f; y <= rotatedMaxY; y += step) {
-    if (leftToRight) {
-      infill.push_back({
-          {rotatedMinX, y},
-          {rotatedMaxX, y},
-      });
-    } else {
-      infill.push_back({
-          {rotatedMaxX, y},
-          {rotatedMinX, y},
-      });
+  for (auto &path : paths) {
+    for (auto &point : path) {
+      const auto x = point.x;
+      const auto y = point.y;
+      point = {x * rotation[0] + y * rotation[2],
+               x * rotation[1] + y * rotation[3]};
     }
-
-    leftToRight = !leftToRight;
   }
-  for (double x = rotatedMinX + step / 2.0f; x <= rotatedMaxX; x += step) {
-    if (leftToRight) {
-      infill.push_back({
-          {x, rotatedMinY},
-          {x, rotatedMaxY},
-      });
-    } else {
-      infill.push_back({
-          {x, rotatedMaxY},
-          {x, rotatedMinY},
-      });
-    }
-
-    leftToRight = !leftToRight;
-  }
-
-  if (angle != 0.0f)
-    rotatePaths(infill, angle);
-
-  ClipperD clipper;
-  clipper.AddClip(area);
-  clipper.AddOpenSubject(infill);
-  PathsD discard;
-  // clipper.Execute(ClipType::Intersection, FillRule::EvenOdd, discard,
-  // infill);
-
-  return infill;
 }
 
 enum FillType {
   NoFill,
-  Concentric,
+  ConcentricFill,
   LinesFill,
   FillCount,
 };
@@ -150,8 +46,13 @@ enum InfillType {
   NoInfill,
   LinesInfill,
   Grid,
+  Cubic,
   Triangle,
   TriHexagon,
+  Tetrahedral,
+  QuarterCubic,
+  ConcentricInfill,
+  HalfTetrahedral,
   InfillCount,
 };
 
@@ -195,30 +96,47 @@ public:
   void createSkirt(int lineCount, int height, float distance);
 
   const char *fillTypes[FillType::FillCount]{"None", "Concentric", "Lines"};
-  const char *infillTypes[InfillType::InfillCount]{"None", "Lines", "Grid",
-                                                   "Triangle", "Tri-Hexagon"};
+  const char *infillTypes[InfillType::InfillCount]{
+      "None",        "Lines",
+      "Grid",        "Cubic",
+      "Triangle",    "Tri-Hexagon",
+      "Tetrahedral", "Quarter Cubic",
+      "Concentric",  "Half Tetrahedral",
+  };
 
 private:
   double
   getShiftOffsetFromInfillOriginAndRotation(const Clipper2Lib::PathsD &area,
                                             const float angle);
+
+  void generateFill(Clipper2Lib::PathsD &fillResult, FillType fillType,
+                    const float angle);
+
   void generateLineInfill(Clipper2Lib::PathsD &infillResult,
-                          const Clipper2Lib::PathsD &area,
                           const double lineDistance, const float angle,
-                          float shift = 0.0f);
+                          float shift);
   void generateGridInfill(Clipper2Lib::PathsD &infillResult,
-                          const Clipper2Lib::PathsD &area,
                           const double lineDistance, const float angle,
-                          float shift = 0.0f);
+                          float shift);
+
+  void generateCubicInfill(Clipper2Lib::PathsD &infillResult,
+                           const double lineDistance, const float angle);
 
   void generateTriangleInfill(Clipper2Lib::PathsD &infillResult,
-                              const Clipper2Lib::PathsD &area,
                               const double lineDistance, const float angle,
-                              float shift = 0.0f);
+                              float shift);
   void generateTriHexagonInfill(Clipper2Lib::PathsD &infillResult,
-                                const Clipper2Lib::PathsD &area,
                                 const double lineDistance, const float angle,
-                                float shift = 0.0f);
+                                float shift);
+  void generateTetrahedralInfill(Clipper2Lib::PathsD &infillResult,
+                                 const double lineDistance);
+  void generateQuarterCubicInfill(Clipper2Lib::PathsD &infillResult,
+                                  const double lineDistance);
+  void generateHalfTetrahedralInfill(Clipper2Lib::PathsD &infillResult,
+                                     const double lineDistance,
+                                     const float angle, float zShift);
+  void generateConcentricInfill(Clipper2Lib::PathsD &infillResult,
+                                const double lineDistance);
 
 private:
   std::unique_ptr<Model> m_model;
@@ -227,6 +145,8 @@ private:
   size_t m_layerCount = 0;
   float m_layerHeight;
   float m_lineWidth;
-  int m_floorCount;
-  int m_roofCount;
+
+  Clipper2Lib::PathsD m_currentArea;
+  size_t m_currentLayer;
+  double m_infillLineDistance;
 };

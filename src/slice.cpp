@@ -9,7 +9,6 @@
 #include <glm/fwd.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <limits>
-#include <map>
 #include <sys/types.h>
 
 using namespace Clipper2Lib;
