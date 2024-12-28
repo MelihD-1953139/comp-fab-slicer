@@ -119,6 +119,9 @@ int main(int argc, char *argv[]) {
             g_state.sliceSettings.sliceIndex--;
             break;
           }
+          g_state.sliceSettings.sliceIndex =
+              std::clamp(g_state.sliceSettings.sliceIndex, 1,
+                         g_state.sliceSettings.maxSliceIndex);
         }
         return false;
       })
@@ -172,7 +175,7 @@ int main(int argc, char *argv[]) {
         ImGui::Checkbox("Drop model down", &g_state.objectSettings.dropDown);
       }
 
-      if (ImGui::CollapsingHeader("Slice settings")) {
+      if (!ImGui::CollapsingHeader("Slice settings")) {
         if (ImGui::SliderInt("Slice Index", &g_state.sliceSettings.sliceIndex,
                              1, slicer.getLayerCount())) {
           printer.setSliceHeight((g_state.sliceSettings.sliceIndex - 1) *
@@ -190,6 +193,7 @@ int main(int argc, char *argv[]) {
                          printer.getNozzle() * 0.8f);
         }
 
+        ImGui::SeparatorText("Walls");
         if (ImGui::InputInt("Shell count", &g_state.sliceSettings.shellCount)) {
           g_state.sliceSettings.shellCount =
               std::clamp(g_state.sliceSettings.shellCount, 1, 10);
@@ -215,14 +219,25 @@ int main(int argc, char *argv[]) {
             g_state.sliceSettings.roofCount = 0;
           }
         }
-        ImGui::Combo("Infill type",
+        ImGui::Combo("Infill pattern",
                      reinterpret_cast<int *>(&g_state.sliceSettings.infillType),
                      slicer.infillTypes, InfillType::InfillCount);
 
         ImGui::SeparatorText("Support");
         {
-          ImGui::Checkbox("Enable support",
-                          &g_state.sliceSettings.enableSupport);
+          ImGui::Combo(
+              "Support pattern",
+              reinterpret_cast<int *>(&g_state.sliceSettings.supportType),
+              slicer.supportTypes, SupportType::SupportCount);
+
+          if (ImGui::InputInt("Support Wall Line Count",
+                              &g_state.sliceSettings.supportWallCount) &&
+              g_state.sliceSettings.supportWallCount < 0)
+            g_state.sliceSettings.supportWallCount = 0;
+          if (ImGui::InputInt("Support Brimm Line Count",
+                              &g_state.sliceSettings.supportBrimCount) &&
+              g_state.sliceSettings.supportBrimCount < 0)
+            g_state.sliceSettings.supportBrimCount = 0;
         }
         ImGui::SeparatorText("Bed adhesion");
         {
@@ -277,7 +292,10 @@ int main(int argc, char *argv[]) {
 
         if (g_state.sliceSettings.enableSupport) {
           Logger::info("Creating support");
-          slicer.createSupport(g_state.sliceSettings.infillDensity / 100.0f);
+          slicer.createSupport(g_state.sliceSettings.supportType,
+                               g_state.sliceSettings.infillDensity / 100.0f,
+                               g_state.sliceSettings.supportWallCount,
+                               g_state.sliceSettings.supportBrimCount);
         }
 
         switch (g_state.sliceSettings.adhesionType) {

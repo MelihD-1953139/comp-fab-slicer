@@ -45,7 +45,7 @@ enum FillType {
 enum InfillType {
   NoInfill,
   LinesInfill,
-  Grid,
+  GridInfill,
   Cubic,
   Triangle,
   TriHexagon,
@@ -54,6 +54,15 @@ enum InfillType {
   ConcentricInfill,
   HalfTetrahedral,
   InfillCount,
+};
+
+enum SupportType {
+  NoSupport,
+  LinesSupport,
+  GridSupport,
+  Triangles,
+  ConcentricSupport,
+  SupportCount
 };
 
 enum AdhesionTypes {
@@ -89,7 +98,8 @@ public:
   void createWalls(int wallCount);
   void createFill(FillType fillType, int floorCount, int roofCount);
   void createInfill(InfillType infillType, float density);
-  void createSupport(float density);
+  void createSupport(SupportType supportType, float density, size_t wallCount,
+                     size_t brimWallCount);
 
   // Adhesion
   void createBrim(BrimLocation brimLocation, int lineCount);
@@ -103,6 +113,8 @@ public:
       "Tetrahedral", "Quarter Cubic",
       "Concentric",  "Half Tetrahedral",
   };
+  const char *supportTypes[SupportType::SupportCount]{
+      "None", "Lines", "Grid", "Triangles", "Concentric"};
 
 private:
   double

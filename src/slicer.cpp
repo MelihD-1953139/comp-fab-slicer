@@ -141,7 +141,7 @@ void Slicer::createInfill(InfillType infillType, float density) {
       generateLineInfill(infill, m_lineWidth / density,
                          m_currentLayer % 2 == 0 ? 45.0f : 135.0f, 0);
       break;
-    case Grid:
+    case GridInfill:
       generateGridInfill(infill, (2.0f * m_lineWidth) / density, 45.0f, 0);
       break;
     case Cubic:
@@ -172,40 +172,70 @@ void Slicer::createInfill(InfillType infillType, float density) {
   }
 }
 
-void Slicer::createSupport(float density) {
+void Slicer::createSupport(SupportType supportType, float density,
+                           size_t wallCount, size_t brimConut) {
+  m_slices.back().setSupportArea(PathsD());
   for (auto it = m_slices.rbegin() + 1; it < m_slices.rend(); ++it) {
     auto previousSliceIT = it - 1;
-    auto prevPerimAndSupport =
-        Union(previousSliceIT->getPerimeter(),
-              previousSliceIT->getSupportArea(), FillRule::EvenOdd);
+
+    PathsD prevPerimAndSupport = previousSliceIT->getPerimeter();
+    prevPerimAndSupport.append_range(previousSliceIT->getSupportArea());
+    prevPerimAndSupport = Union(prevPerimAndSupport, FillRule::EvenOdd);
 
     auto dilatedPerimeter = InflatePaths(it->getPerimeter(), m_lineWidth * 3.0f,
-                                         JoinType::Round, EndType::Polygon);
+                                         JoinType::Miter, EndType::Polygon);
 
     auto supportArea =
         Difference(prevPerimAndSupport, dilatedPerimeter, FillRule::EvenOdd);
-
-    auto lastLayerSupport = Difference(previousSliceIT->getPerimeter(),
-                                       it->getPerimeter(), FillRule::EvenOdd);
-
-    supportArea = Difference(supportArea, lastLayerSupport, FillRule::EvenOdd);
-
     it->setSupportArea(supportArea);
 
-    if (it == m_slices.rend() - 1) {
-      m_infillLineDistance = m_lineWidth;
-    } else {
-      m_infillLineDistance = (2.0 * m_lineWidth) / density;
-    }
+    // Remove support from the last layer before a floor
+    auto lastLayerSupport = Difference(previousSliceIT->getPerimeter(),
+                                       it->getPerimeter(), FillRule::EvenOdd);
+    supportArea = Difference(supportArea, lastLayerSupport, FillRule::EvenOdd);
+
+    // Horizontal expansion of the support
+    supportArea = InflatePaths(supportArea, 2.0 * m_lineWidth, JoinType::Round,
+                               EndType::Polygon);
+    supportArea = Difference(supportArea, dilatedPerimeter, FillRule::EvenOdd);
+
+    m_currentArea = supportArea;
 
     PathsD support;
-    generateGridInfill(support, (2.0 * m_lineWidth) / density, 0.0, 0.0f);
+    for (size_t i = 0; i < wallCount; ++i) {
+      m_currentArea = InflatePaths(supportArea, m_lineWidth * i,
+                                   JoinType::Round, EndType::Polygon);
+      support.append_range(closePathsD(m_currentArea));
+    }
+    PathsD supportLines;
+    switch (supportType) {
+    case NoSupport:
+    case SupportCount:
+      return;
+    case LinesSupport:
+      generateLineInfill(supportLines, m_lineWidth / density, 0.0, 0.0);
+      break;
+    case GridSupport:
+      generateGridInfill(supportLines, (2.0 * m_lineWidth) / density, 0.0,
+                         0.0f);
+      break;
+    case Triangles:
+      generateTriangleInfill(supportLines, (3.0 * m_lineWidth) / density, 0.0,
+                             0.0);
+      break;
+    case ConcentricSupport:
+      generateConcentricInfill(supportLines, m_lineWidth / density);
+      break;
+    }
+
     ClipperD clipper;
     clipper.AddClip(supportArea);
-    clipper.AddOpenSubject(support);
+    clipper.AddOpenSubject(supportLines);
     PathsD discard;
     clipper.Execute(ClipType::Intersection, FillRule::EvenOdd, discard,
-                    support);
+                    supportLines);
+
+    support.append_range(supportLines);
     it->addSupport(support);
   }
 }
