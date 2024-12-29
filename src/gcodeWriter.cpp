@@ -3,6 +3,7 @@
 #include "clipper2/clipper.core.h"
 #include "state.h"
 #include "utils.h"
+#include <algorithm>
 #include <iomanip>
 #include <ios>
 
@@ -97,25 +98,23 @@ void GcodeWriter::WritePath(const Clipper2Lib::PathD &path, float speed) {
 }
 
 void GcodeWriter::WriteSlice(const Slice &slice) {
-  auto shells = slice.getShells();
-  if (shells.empty())
-    return;
 
   m_file << ";TYPE:SUPPORT\n";
-  for (auto &support : slice.getSupport())
-    WritePaths(support, g_state.printerSettings.wallSpeed * 60.0f);
+  for (auto &paths : slice.getSupport())
+    WritePaths(paths, g_state.printerSettings.wallSpeed * 60.0f);
 
-  for (auto it = shells.rbegin(); it != shells.rend() - 1; ++it) {
-    m_file << ";TYPE:WALL-INNER\n";
+  m_file << ";TYPE:WALL-INNER\n";
+  auto shells = slice.getShells();
+  for (auto it = shells.rbegin(); it != shells.rend(); ++it) {
     WritePaths(*it, g_state.printerSettings.wallSpeed * 60.0f);
   }
 
   m_file << ";TYPE:WALL-OUTER\n";
-  WritePaths(shells.front(), g_state.printerSettings.wallSpeed * 60.0f);
+  WritePaths(slice.getPerimeter(), g_state.printerSettings.wallSpeed * 60.0f);
 
   m_file << ";TYPE:SKIN\n";
-  for (auto &fill : slice.getFill())
-    WritePaths(fill, g_state.printerSettings.infillSpeed * 60.0f);
+  for (auto &skin : slice.getFill())
+    WritePaths(skin, g_state.printerSettings.infillSpeed * 60.0f);
 
   m_file << ";TYPE:FILL\n";
   for (auto &infill : slice.getInfill())

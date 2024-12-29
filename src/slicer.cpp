@@ -47,7 +47,10 @@ void Slicer::createWalls(int wallCount) {
       float delta = -m_lineWidth / 2.0f - m_lineWidth * j;
       PathsD wall = InflatePaths(objectPerimeter, delta, JoinType::Round,
                                  EndType::Polygon);
-      slice.addShell(closePathsD(wall));
+      if (j == 0)
+        slice.addOuterWall(closePathsD(wall));
+      else
+        slice.addInnerWall(closePathsD(wall));
     }
   }
 }
@@ -243,6 +246,7 @@ void Slicer::createSupport(SupportType supportType, float density,
 void Slicer::createBrim(BrimLocation brimLocation, int lineCount) {
   auto &slice = m_slices.front();
   const PathsD &perimeter = slice.getPerimeter();
+  slice.removeSupport();
 
   for (int i = 1; i <= lineCount; ++i) {
 

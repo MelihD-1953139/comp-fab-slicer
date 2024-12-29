@@ -2,14 +2,13 @@
 #include "utils.h"
 
 #include <Nexus.h>
-#include <algorithm>
 #include <clipper2/clipper.core.h>
 #include <clipper2/clipper.h>
 #include <cstdlib>
 #include <glm/fwd.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <limits>
 #include <sys/types.h>
+#include <vector>
 
 using namespace Clipper2Lib;
 
@@ -70,55 +69,99 @@ Slice::Slice(std::vector<Line> &lineSegments) {
     }
   }
   perimeter = Clipper2Lib::Union(perimeter, FillRule::EvenOdd);
-  m_shells.push_back(perimeter);
+  m_paths.emplace(OuterWall, std::vector<PathsD>{perimeter});
 }
 
 void Slice::clear() {
-  m_shells.clear();
-  m_fill.clear();
-  m_infill.clear();
-  m_support.clear();
-  m_supportArea = PathsD();
-  for (auto vao : m_VAOs) {
-    glDeleteVertexArrays(1, &vao);
+  for (auto &pd : m_paths) {
+    for (auto vao : pd.second.VAOs)
+      glDeleteVertexArrays(1, &vao);
   }
-  m_VAOs.clear();
+  m_paths.clear();
+  m_supportArea = PathsD();
 }
 
-void Slice::addShell(const PathsD &shell) {
-  m_shells.push_back(shell);
-  initOpenGLBuffers(shell);
+void Slice::addOuterWall(const PathsD &wall) {
+  if (!m_paths.contains(OuterWall))
+    m_paths.emplace(OuterWall, PathData());
+
+  auto &pd = m_paths.at(OuterWall);
+  pd.paths.push_back(wall);
+  initOpenGLBuffers(pd.VAOs, wall);
+}
+
+const PathsD &Slice::getPerimeter() const {
+  return m_paths.at(OuterWall).paths.front();
+}
+
+void Slice::addInnerWall(const PathsD &shell) {
+  if (!m_paths.contains(InnerWall))
+    m_paths.emplace(InnerWall, PathData());
+
+  auto &pd = m_paths.at(InnerWall);
+  pd.paths.push_back(shell);
+  initOpenGLBuffers(pd.VAOs, shell);
+}
+
+const std::vector<PathsD> &Slice::getShells() const {
+  return m_paths.at(InnerWall).paths;
+}
+const PathsD &Slice::getInnermostShell() const {
+  return m_paths.at(InnerWall).paths.back();
 }
 
 void Slice::addFill(const PathsD &fill) {
-  m_fill.push_back(fill);
-  initOpenGLBuffers(fill);
+  if (!m_paths.contains(Skin))
+    m_paths.emplace(Skin, PathData());
+
+  auto &pd = m_paths.at(Skin);
+  pd.paths.push_back(fill);
+  initOpenGLBuffers(pd.VAOs, fill);
+}
+
+const std::vector<PathsD> &Slice::getFill() const {
+  return m_paths.at(Skin).paths;
 }
 
 void Slice::addInfill(const PathsD &infill) {
-  m_infill.push_back(infill);
-  initOpenGLBuffers(infill);
+  if (!m_paths.contains(Infill))
+    m_paths.emplace(Infill, PathData());
+
+  auto &pd = m_paths.at(Infill);
+  pd.paths.push_back(infill);
+  initOpenGLBuffers(pd.VAOs, infill);
+}
+
+const std::vector<PathsD> &Slice::getInfill() const {
+  return m_paths.at(Infill).paths;
 }
 
 void Slice::addSupport(const PathsD &support) {
-  m_support.push_back(support);
-  initOpenGLBuffers(support);
+  if (!m_paths.contains(Support))
+    m_paths.emplace(Support, PathData());
+
+  auto &pd = m_paths.at(Support);
+  pd.paths.push_back(support);
+  initOpenGLBuffers(pd.VAOs, support);
+}
+
+const std::vector<PathsD> &Slice::getSupport() const {
+  return m_paths.at(Support).paths;
+}
+
+void Slice::removeSupport() {
+  if (!m_paths.contains(Support))
+    return;
+  auto VAOs = m_paths.at(Support).VAOs;
+  glDeleteVertexArrays(VAOs.size(), VAOs.data());
+  m_paths.at(Support).paths.clear();
+  m_paths.at(Support).VAOs.clear();
 }
 
 std::pair<glm::vec2, glm::vec2> Slice::getBounds() const {
-  glm::vec2 min = {std::numeric_limits<double>::max(),
-                   std::numeric_limits<double>::max()};
-  glm::vec2 max = {-std::numeric_limits<double>::max(),
-                   -std::numeric_limits<double>::max()};
-  for (auto &path : m_shells.front()) {
-    for (auto &point : path) {
-      min.x = std::min(min.x, float(point.x));
-      min.y = std::min(min.y, float(point.y));
-      max.x = std::max(max.x, float(point.x));
-      max.y = std::max(max.y, float(point.y));
-    }
-  }
-  return {min, max};
+  auto [minX, minY, maxX, maxY] =
+      GetBounds(m_paths.at(InnerWall).paths.front());
+  return {{minX, minY}, {maxX, maxY}};
 }
 
 void Slice::render(Shader &shader, const glm::vec3 &position,
@@ -133,28 +176,24 @@ void Slice::render(Shader &shader, const glm::vec3 &position,
 
   size_t vaoIndex = 0;
 
-  drawPaths(m_shells.front(), shader, RED, vaoIndex);
+  drawPaths(m_paths.at(InnerWall), shader, RED);
 
-  for (auto it = m_shells.rbegin(); it != m_shells.rend() - 1; ++it)
-    drawPaths(*it, shader, GREEN, vaoIndex);
+  drawPaths(m_paths.at(OuterWall), shader, GREEN);
 
-  for (auto &fill : m_fill)
-    drawPaths(fill, shader, YELLOW, vaoIndex);
+  drawPaths(m_paths.at(Skin), shader, YELLOW);
 
-  for (auto &fill : m_infill)
-    drawPaths(fill, shader, ORANGE, vaoIndex);
+  drawPaths(m_paths.at(Infill), shader, ORANGE);
 
-  for (auto &path : m_support)
-    drawPaths(path, shader, BLUE, vaoIndex);
+  drawPaths(m_paths.at(Support), shader, BLUE);
 }
 
-void Slice::initOpenGLBuffers(const Clipper2Lib::PathsD &paths) {
+void Slice::initOpenGLBuffers(std::vector<uint> &VAOs, const PathsD &paths) {
   for (auto path : paths) {
-    initOpenGLBuffer(path);
+    VAOs.push_back(initOpenGLBuffer(path));
   }
 }
 
-void Slice::initOpenGLBuffer(const Clipper2Lib::PathD &path) {
+uint Slice::initOpenGLBuffer(const PathD &path) {
   uint VAO, VBO;
   glGenVertexArrays(1, &VAO);
   glGenBuffers(1, &VBO);
@@ -169,18 +208,21 @@ void Slice::initOpenGLBuffer(const Clipper2Lib::PathD &path) {
   glEnableVertexAttribArray(0);
 
   glBindVertexArray(0);
-  m_VAOs.push_back(VAO);
+  return VAO;
 }
 
-void Slice::drawPaths(const PathsD &paths, Shader &shader, glm::vec3 color,
-                      size_t &vaoIndex) const {
+void Slice::drawPaths(const PathData &pd, Shader &shader,
+                      glm::vec3 color) const {
   shader.use();
   shader.setVec3("color", color);
-  for (auto &path : paths)
-    drawPath(path, vaoIndex);
+  size_t vaoIndex = 0;
+  for (auto &paths : pd.paths)
+    for (auto &path : paths)
+      drawPath(path, pd.VAOs[vaoIndex++]);
 }
-void Slice::drawPath(const PathD &path, size_t &vaoIndex) const {
-  glBindVertexArray(m_VAOs[vaoIndex++]);
+
+void Slice::drawPath(const PathD &path, uint vao) const {
+  glBindVertexArray(vao);
   glDrawArrays(GL_LINE_STRIP, 0, path.size());
   glBindVertexArray(0);
 }
