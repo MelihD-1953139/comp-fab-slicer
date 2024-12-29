@@ -1,4 +1,5 @@
 #include "slice.h"
+#include "Nexus/Log.h"
 #include "utils.h"
 
 #include <Nexus.h>
@@ -94,6 +95,36 @@ const PathsD &Slice::getPerimeter() const {
   return m_paths.at(OuterWall).paths.front();
 }
 
+const PathD Slice::getOuterMostPerimeter() const {
+  auto perimeters = m_paths.at(OuterWall).paths;
+  if (perimeters.empty()) {
+    return PathD(); // Return an empty path if there are no perimeters
+  }
+
+  // for (auto &perimeter : perimeters) {
+  //   Nexus::Logger::debug("Perimeter area {}", Area(perimeter));
+  //   debugPrintPathsD(perimeter);
+  // }
+
+  // Initialize the outermost path with the first path
+  PathD outermostPath = perimeters.front().front();
+  double maxArea = Area(GetBounds(outermostPath).AsPath());
+
+  // Loop through all PathsD and then through each PathD to find the one with
+  // the largest area
+  for (const auto &paths : perimeters) {
+    for (const auto &path : paths) {
+      double currentArea = Area(GetBounds(path).AsPath());
+      if (currentArea > maxArea) {
+        outermostPath = path;
+        maxArea = currentArea;
+      }
+    }
+  }
+
+  return outermostPath;
+}
+
 void Slice::addInnerWall(const PathsD &shell) {
   if (!m_paths.contains(InnerWall))
     m_paths.emplace(InnerWall, PathData());
@@ -176,9 +207,9 @@ void Slice::render(Shader &shader, const glm::vec3 &position,
 
   size_t vaoIndex = 0;
 
-  drawPaths(m_paths.at(InnerWall), shader, RED);
+  drawPaths(m_paths.at(OuterWall), shader, RED);
 
-  drawPaths(m_paths.at(OuterWall), shader, GREEN);
+  drawPaths(m_paths.at(InnerWall), shader, GREEN);
 
   drawPaths(m_paths.at(Skin), shader, YELLOW);
 

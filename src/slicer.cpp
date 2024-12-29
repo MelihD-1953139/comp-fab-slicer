@@ -176,7 +176,7 @@ void Slicer::createInfill(InfillType infillType, float density) {
 }
 
 void Slicer::createSupport(SupportType supportType, float density,
-                           size_t wallCount, size_t brimConut) {
+                           size_t wallCount, size_t brimCount) {
   m_slices.back().setSupportArea(PathsD());
   for (auto it = m_slices.rbegin() + 1; it < m_slices.rend(); ++it) {
     auto previousSliceIT = it - 1;
@@ -205,8 +205,9 @@ void Slicer::createSupport(SupportType supportType, float density,
     m_currentArea = supportArea;
 
     PathsD support;
-    for (size_t i = 0; i < wallCount; ++i) {
-      m_currentArea = InflatePaths(supportArea, m_lineWidth * i,
+    for (size_t i = 0; i < (it != m_slices.rend() - 1 ? wallCount : brimCount);
+         ++i) {
+      m_currentArea = InflatePaths(supportArea, -m_lineWidth * i,
                                    JoinType::Round, EndType::Polygon);
       support.append_range(closePathsD(m_currentArea));
     }
@@ -272,17 +273,6 @@ void Slicer::createBrim(BrimLocation brimLocation, int lineCount) {
   }
 }
 
-PathsD getOutermost(const PathsD &paths) {
-  if (paths.empty())
-    return PathsD();
-
-  auto outermostPath =
-      std::max_element(paths.begin(), paths.end(),
-                       [](const PathD &lhs, const PathD &rhs) -> bool {
-                         return Area(lhs) < Area(rhs);
-                       });
-  return {*outermostPath};
-}
 void Slicer::createSkirt(int lineCount, int height, float distance) {
 
   height = std::min(height, (int)m_slices.size());
@@ -290,15 +280,17 @@ void Slicer::createSkirt(int lineCount, int height, float distance) {
   // First layer gets `lineCount` lines
   auto &slice = m_slices.front();
   auto perimeter = slice.getPerimeter();
-  auto outerMostPerimeter = getOutermost(perimeter);
+  PathsD area = perimeter;
+  for (auto &support : slice.getSupport())
+    area = Union(perimeter, support, FillRule::NonZero);
+
+  auto skirt = InflatePaths(area, distance, JoinType::Round, EndType::Polygon);
+
   for (int i = 0; i < lineCount; ++i) {
-    slice.addSupport(
-        closePathsD(InflatePaths(outerMostPerimeter, distance + i * m_lineWidth,
-                                 JoinType::Round, EndType::Polygon)));
+    slice.addSupport(closePathsD(InflatePaths(
+        skirt, i * m_lineWidth, JoinType::Round, EndType::Polygon)));
   }
 
-  auto skirt = InflatePaths(outerMostPerimeter, distance, JoinType::Round,
-                            EndType::Polygon);
   // `height` - 1 layers get the first skirt aswell
   for (auto sliceIt = m_slices.begin() + 1; sliceIt < m_slices.begin() + height;
        ++sliceIt) {

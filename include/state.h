@@ -31,7 +31,7 @@ struct State {
     int supportWallCount = 1;
     int supportBrimCount = 10;
 
-    AdhesionTypes adhesionType = Brim;
+    AdhesionTypes adhesionType = Skirt;
     BrimLocation brimLocation = Outside;
     int brimLineCount = 20;
 

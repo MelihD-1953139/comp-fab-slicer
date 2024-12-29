@@ -29,6 +29,7 @@ private:
 
 class Slice {
   using PathsD = Clipper2Lib::PathsD;
+  using PathD = Clipper2Lib::PathD;
 
   struct PathData {
     std::vector<PathsD> paths;
@@ -63,6 +64,7 @@ public:
   void setSupportArea(const PathsD supportArea) { m_supportArea = supportArea; }
 
   const PathsD &getPerimeter() const;
+  const PathD getOuterMostPerimeter() const;
   const std::vector<PathsD> &getShells() const;
   const PathsD &getInnermostShell() const;
   const std::vector<PathsD> &getFill() const;
@@ -82,7 +84,7 @@ private:
 
 private:
   void initOpenGLBuffers(std::vector<uint> &VAOs, const PathsD &paths);
-  uint initOpenGLBuffer(const Clipper2Lib::PathD &path);
+  uint initOpenGLBuffer(const PathD &path);
   void drawPaths(const PathData &pd, Shader &shader, glm::vec3 color) const;
-  void drawPath(const Clipper2Lib::PathD &path, uint vaoIndex) const;
+  void drawPath(const PathD &path, uint vaoIndex) const;
 };
