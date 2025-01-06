@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
         ImGui::InputText("Model file", g_state.fileSettings.inputFile,
                          IM_ARRAYSIZE(g_state.fileSettings.inputFile));
         if (ImGui::Button("Load")) {
-          model = Model(g_state.fileSettings.inputFile);
+          slicer.loadModel(g_state.fileSettings.inputFile);
           model.setPosition(printer.getCenter() * ZEROY);
           g_state.sliceSettings.maxSliceIndex =
               model.getLayerCount(g_state.sliceSettings.layerHeight);
@@ -181,6 +181,8 @@ int main(int argc, char *argv[]) {
           printer.setSliceHeight((g_state.sliceSettings.sliceIndex - 1) *
                                  g_state.sliceSettings.layerHeight);
         }
+
+        ImGui::InputInt("Extra shift", (int *)&slicer.extraShift);
 
         ImGui::Checkbox("Show Slice Plane",
                         &g_state.windowSettings.showSlicePlane);
@@ -330,6 +332,9 @@ int main(int argc, char *argv[]) {
         const int width = ImGui::GetContentRegionAvail().x;
         const int height = ImGui::GetContentRegionAvail().y;
         auto view = camera.getViewMatrix(printer.getCenter() * ZEROY);
+        // Logger::debug("print bed center: ({}, {}, {})",
+        // printer.getCenter().x,
+        //               printer.getCenter().z, printer.getCenter().y);
         auto projection = camera.getProjectionMatrix(width, height);
 
         viewBuffer.bind();

@@ -1,5 +1,4 @@
 #include "slice.h"
-#include "Nexus/Log.h"
 #include "utils.h"
 
 #include <Nexus.h>
@@ -14,8 +13,6 @@
 using namespace Clipper2Lib;
 
 void Line::setNextPoint(Clipper2Lib::PointD point) {
-  // point = {std::round(point.x * 100.0) / 100.0,
-  //          std::round(point.y * 100.0) / 100.0};
   if (firstPointSet) {
     p2 = point;
   } else {
@@ -207,15 +204,20 @@ void Slice::render(Shader &shader, const glm::vec3 &position,
 
   size_t vaoIndex = 0;
 
-  drawPaths(m_paths.at(OuterWall), shader, RED);
+  if (m_paths.contains(OuterWall))
+    drawPaths(m_paths.at(OuterWall), shader, RED);
 
-  drawPaths(m_paths.at(InnerWall), shader, GREEN);
+  if (m_paths.contains(InnerWall))
+    drawPaths(m_paths.at(InnerWall), shader, GREEN);
 
-  drawPaths(m_paths.at(Skin), shader, YELLOW);
+  if (m_paths.contains(Skin))
+    drawPaths(m_paths.at(Skin), shader, YELLOW);
 
-  drawPaths(m_paths.at(Infill), shader, ORANGE);
+  if (m_paths.contains(Infill))
+    drawPaths(m_paths.at(Infill), shader, ORANGE);
 
-  drawPaths(m_paths.at(Support), shader, BLUE);
+  if (m_paths.contains(Support))
+    drawPaths(m_paths.at(Support), shader, BLUE);
 }
 
 void Slice::initOpenGLBuffers(std::vector<uint> &VAOs, const PathsD &paths) {

@@ -1,5 +1,4 @@
 #include "slicer.h"
-#include "Nexus/Log.h"
 #include "model.h"
 #include "utils.h"
 
@@ -8,9 +7,12 @@
 #include <clipper2/clipper.engine.h>
 #include <clipper2/clipper.h>
 #include <clipper2/clipper.offset.h>
+#include <cstdint>
 #include <glm/trigonometric.hpp>
 #include <hfs/hfs_format.h>
 #include <memory>
+#include <numbers>
+#include <sys/types.h>
 
 using namespace Clipper2Lib;
 
@@ -25,7 +27,8 @@ void Slicer::loadModel(const char *modelPath) {
 void Slicer::init(float layerHeight, float nozzleDiameter) {
   m_layerCount = m_model->getLayerCount(layerHeight);
   m_layerHeight = layerHeight;
-  m_lineWidth = nozzleDiameter;
+  m_lineWidth = MM2INT(nozzleDiameter);
+  m_shift = m_lineWidth / 2;
 }
 
 void Slicer::createSlices() {
@@ -38,24 +41,26 @@ void Slicer::createSlices() {
 }
 
 void Slicer::createWalls(int wallCount) {
-  for (size_t i = 0; i < m_layerCount; ++i) {
-    auto &slice = m_slices[i];
-    auto objectPerimeter = slice.getPerimeter();
+  for (auto &slice : m_slices) {
+    auto objectPerimeter = toPaths64(slice.getPerimeter());
     slice.clear();
 
     for (size_t j = 0; j < wallCount; ++j) {
-      float delta = -m_lineWidth / 2.0f - m_lineWidth * j;
-      PathsD wall = InflatePaths(objectPerimeter, delta, JoinType::Round,
-                                 EndType::Polygon);
+      double delta = -static_cast<double>(m_lineWidth) / 2.0 -
+                     static_cast<double>(m_lineWidth * j);
+      Paths64 wall = InflatePaths(objectPerimeter, delta, JoinType::Round,
+                                  EndType::Polygon);
       if (j == 0)
-        slice.addOuterWall(closePathsD(wall));
+        slice.addOuterWall(toPathsD(closePaths(wall)));
       else
-        slice.addInnerWall(closePathsD(wall));
+        slice.addInnerWall(toPathsD(closePaths(wall)));
     }
   }
 }
 
 void Slicer::createFill(FillType fillType, int floorCount, int roofCount) {
+  if (fillType == NoFill)
+    return;
 
   floorCount = std::clamp<int>(floorCount, 0, m_layerCount);
   roofCount = std::clamp<int>(roofCount, 0, m_layerCount - floorCount);
@@ -63,10 +68,10 @@ void Slicer::createFill(FillType fillType, int floorCount, int roofCount) {
   // First `floorCount` layers are always filled
   for (size_t i = 0; i < floorCount; ++i) {
     auto &slice = m_slices[i];
-    PathsD fill;
-    m_currentArea = slice.getInnermostShell();
-    generateFill(fill, fillType, i % 2 == 0 ? 45.0f : -45.0f);
-    slice.addFill(fill);
+    Paths64 fill;
+    m_currentArea = toPaths64(slice.getInnermostShell());
+    generateFill(fill, fillType, i % 2 == 0 ? 45.0 : 135.0);
+    slice.addFill(toPathsD(fill));
     slice.setFillArea(slice.getInnermostShell());
   }
 
@@ -81,23 +86,28 @@ void Slicer::createFill(FillType fillType, int floorCount, int roofCount) {
     }
     floorArea =
         Difference(slice.getInnermostShell(), floorArea, FillRule::EvenOdd);
-    m_currentArea = floorArea;
-    PathsD floor;
-    generateFill(floor, fillType, i % 2 == 0 ? 45.0f : -45.0f);
+    m_currentArea = toPaths64(floorArea);
+    Paths64 floor;
+    generateFill(floor, fillType, i % 2 == 0 ? 45.0 : 135.0);
 
-    PathsD roofArea = m_slices[i + 1].getInnermostShell();
+    PathsD roofArea;
+    if (i + 1 >= m_layerCount)
+      roofArea = PathsD();
+    else
+      roofArea = m_slices[i + 1].getInnermostShell();
+
     for (size_t j = 2; j <= roofCount; ++j) {
       roofArea = Intersect(roofArea, m_slices[i + j].getInnermostShell(),
                            FillRule::EvenOdd);
     }
     roofArea =
         Difference(slice.getInnermostShell(), roofArea, FillRule::EvenOdd);
-    m_currentArea = roofArea;
-    PathsD roof;
-    generateFill(roof, fillType, i % 2 == 0 ? 45.0f : -45.0f);
+    m_currentArea = toPaths64(roofArea);
+    Paths64 roof;
+    generateFill(roof, fillType, i % 2 == 0 ? 45.0 : 135.0);
 
-    slice.addFill(floor);
-    slice.addFill(roof);
+    slice.addFill(toPathsD(floor));
+    slice.addFill(toPathsD(roof));
 
     auto fillArea = Union(floorArea, roofArea, FillRule::NonZero);
     slice.setFillArea(fillArea);
@@ -106,16 +116,16 @@ void Slicer::createFill(FillType fillType, int floorCount, int roofCount) {
   // Last `roofCount` layers are always filled
   for (size_t i = m_layerCount - roofCount; i < m_layerCount; ++i) {
     auto &slice = m_slices[i];
-    m_currentArea = slice.getInnermostShell();
-    PathsD fill;
-    generateFill(fill, fillType, i % 2 == 0 ? 45.0f : -45.0f);
-    slice.addFill(fill);
-    slice.setFillArea(m_currentArea);
+    m_currentArea = toPaths64(slice.getInnermostShell());
+    Paths64 fill;
+    generateFill(fill, fillType, i % 2 == 0 ? 45.0 : 135.0);
+    slice.addFill(toPathsD(fill));
+    slice.setFillArea(toPathsD(m_currentArea));
   }
 }
 
-void Slicer::generateFill(PathsD &fillResult, FillType fillType,
-                          const float angle) {
+void Slicer::generateFill(Paths64 &fillResult, FillType fillType,
+                          const double angle) {
   switch (fillType) {
   case NoFill:
   case FillCount:
@@ -130,71 +140,73 @@ void Slicer::generateFill(PathsD &fillResult, FillType fillType,
 }
 
 void Slicer::createInfill(InfillType infillType, float density) {
+  if (infillType == NoInfill)
+    return;
   for (m_currentLayer = 0; m_currentLayer < m_slices.size(); ++m_currentLayer) {
-    m_currentArea =
+    m_currentArea = toPaths64(
         Difference(m_slices[m_currentLayer].getInnermostShell(),
-                   m_slices[m_currentLayer].getFillArea(), FillRule::NonZero);
+                   m_slices[m_currentLayer].getFillArea(), FillRule::NonZero));
 
-    PathsD infill;
+    Paths64 infill;
     switch (infillType) {
     case NoInfill:
     case InfillCount:
       return;
     case LinesInfill:
-      generateLineInfill(infill, m_lineWidth / density,
+      generateLineInfill(infill, getLineDistance(1, density),
                          m_currentLayer % 2 == 0 ? 45.0f : 135.0f, 0);
       break;
     case GridInfill:
-      generateGridInfill(infill, (2.0f * m_lineWidth) / density, 45.0f, 0);
+      generateGridInfill(infill, getLineDistance(2, density), 45.0);
       break;
     case Cubic:
-      generateCubicInfill(infill, (3.0f * m_lineWidth) / density, 45.0f);
+      generateCubicInfill(infill, getLineDistance(3, density), 45.0);
       break;
     case Triangle:
-      generateTriangleInfill(infill, (3.0f * m_lineWidth) / density, 45.0f, 0);
+      generateTriangleInfill(infill, getLineDistance(3, density), 45.0);
       break;
     case TriHexagon:
-      generateTriHexagonInfill(infill, (3.0f * m_lineWidth) / density, 45.0f,
-                               0);
+      generateTriHexagonInfill(infill, getLineDistance(3, density), 45.0);
       break;
     case Tetrahedral:
-      generateTetrahedralInfill(infill, (2.0 * m_lineWidth) / density);
+      generateTetrahedralInfill(infill, getLineDistance(2, density));
       break;
     case QuarterCubic:
-      generateQuarterCubicInfill(infill, (2.0 * m_lineWidth) / density);
-      break;
-    case HalfTetrahedral:
-      generateHalfTetrahedralInfill(infill, (2.0 * m_lineWidth) / density, 45.0,
-                                    0);
+      generateQuarterCubicInfill(infill, getLineDistance(2, density));
       break;
     case ConcentricInfill:
-      generateConcentricInfill(infill, m_lineWidth / density);
+      generateConcentricInfill(infill, getLineDistance(1, density));
       break;
     }
-    m_slices[m_currentLayer].addInfill(infill);
+    m_slices[m_currentLayer].addInfill(toPathsD(infill));
   }
 }
 
 void Slicer::createSupport(SupportType supportType, float density,
                            size_t wallCount, size_t brimCount) {
+  if (supportType == NoSupport)
+    return;
   m_slices.back().setSupportArea(PathsD());
   for (auto it = m_slices.rbegin() + 1; it < m_slices.rend(); ++it) {
     auto previousSliceIT = it - 1;
 
-    PathsD prevPerimAndSupport = previousSliceIT->getPerimeter();
-    prevPerimAndSupport.append_range(previousSliceIT->getSupportArea());
+    Paths64 prevPerimAndSupport = toPaths64(previousSliceIT->getPerimeter());
+    prevPerimAndSupport.append_range(
+        toPaths64(previousSliceIT->getSupportArea()));
     prevPerimAndSupport = Union(prevPerimAndSupport, FillRule::EvenOdd);
 
-    auto dilatedPerimeter = InflatePaths(it->getPerimeter(), m_lineWidth * 3.0f,
-                                         JoinType::Miter, EndType::Polygon);
+    auto dilatedPerimeter =
+        InflatePaths(toPaths64(it->getPerimeter()), m_lineWidth * 2.0f,
+                     JoinType::Miter, EndType::Polygon);
 
     auto supportArea =
         Difference(prevPerimAndSupport, dilatedPerimeter, FillRule::EvenOdd);
-    it->setSupportArea(supportArea);
+    it->setSupportArea(toPathsD(supportArea));
 
     // Remove support from the last layer before a floor
-    auto lastLayerSupport = Difference(previousSliceIT->getPerimeter(),
-                                       it->getPerimeter(), FillRule::EvenOdd);
+    auto lastLayerSupport =
+        Difference(toPaths64(previousSliceIT->getPerimeter()),
+                   toPaths64(it->getPerimeter()), FillRule::EvenOdd);
     supportArea = Difference(supportArea, lastLayerSupport, FillRule::EvenOdd);
 
     // Horizontal expansion of the support
@@ -204,14 +216,15 @@ void Slicer::createSupport(SupportType supportType, float density,
 
     m_currentArea = supportArea;
 
-    PathsD support;
+    Paths64 support;
     for (size_t i = 0; i < (it != m_slices.rend() - 1 ? wallCount : brimCount);
          ++i) {
-      m_currentArea = InflatePaths(supportArea, -m_lineWidth * i,
-                                   JoinType::Round, EndType::Polygon);
-      support.append_range(closePathsD(m_currentArea));
+      m_currentArea =
+          InflatePaths(supportArea, -static_cast<double>(m_lineWidth) * i,
+                       JoinType::Round, EndType::Polygon);
+      support.append_range(closePaths(m_currentArea));
     }
-    PathsD supportLines;
+    Paths64 supportLines;
     switch (supportType) {
     case NoSupport:
     case SupportCount:
@@ -220,56 +233,53 @@ void Slicer::createSupport(SupportType supportType, float density,
       generateLineInfill(supportLines, m_lineWidth / density, 0.0, 0.0);
       break;
     case GridSupport:
-      generateGridInfill(supportLines, (2.0 * m_lineWidth) / density, 0.0,
-                         0.0f);
+      generateGridInfill(supportLines, (2.0 * m_lineWidth) / density, 0.0);
       break;
     case Triangles:
-      generateTriangleInfill(supportLines, (3.0 * m_lineWidth) / density, 0.0,
-                             0.0);
+      generateTriangleInfill(supportLines, (3.0 * m_lineWidth) / density, 0.0);
       break;
     case ConcentricSupport:
       generateConcentricInfill(supportLines, m_lineWidth / density);
       break;
     }
 
-    ClipperD clipper;
+    Clipper64 clipper;
     clipper.AddClip(supportArea);
     clipper.AddOpenSubject(supportLines);
-    PathsD discard;
+    Paths64 discard;
     clipper.Execute(ClipType::Intersection, FillRule::EvenOdd, discard,
                     supportLines);
 
     support.append_range(supportLines);
-    it->addSupport(support);
+    it->addSupport(toPathsD(support));
   }
 }
 
 void Slicer::createBrim(BrimLocation brimLocation, int lineCount) {
   auto &slice = m_slices.front();
-  const PathsD &perimeter = slice.getPerimeter();
+  const Paths64 &perimeter = toPaths64(slice.getPerimeter());
   slice.removeSupport();
 
   for (int i = 1; i <= lineCount; ++i) {
 
-    PathsD brim = InflatePaths(perimeter, m_lineWidth * i, JoinType::Round,
-                               EndType::Polygon);
+    Paths64 brim = InflatePaths(perimeter, m_lineWidth * i, JoinType::Round,
+                                EndType::Polygon);
 
     auto it = std::remove_if(brim.begin(), brim.end(),
-                             [&](const PathD &path) -> bool {
+                             [&](const Path64 &path) -> bool {
                                switch (brimLocation) {
                                case Outside:
                                  return !IsPositive(path);
                                case Inside:
                                  return IsPositive(path);
                                case Both:
-                                 return false;
                                default:
                                  return false;
                                }
                              });
     brim.erase(it, brim.end());
 
-    slice.addSupport(closePathsD(brim));
+    slice.addSupport(toPathsD(closePaths(brim)));
   }
 }
 
@@ -287,21 +297,28 @@ void Slicer::createSkirt(int lineCount, int height, float distance) {
   auto skirt = InflatePaths(area, distance, JoinType::Round, EndType::Polygon);
 
   for (int i = 0; i < lineCount; ++i) {
-    slice.addSupport(closePathsD(InflatePaths(
-        skirt, i * m_lineWidth, JoinType::Round, EndType::Polygon)));
+    slice.addSupport(closePaths(InflatePaths(
+        skirt, INT2MM(i * m_lineWidth), JoinType::Round, EndType::Polygon)));
   }
 
   // `height` - 1 layers get the first skirt aswell
   for (auto sliceIt = m_slices.begin() + 1; sliceIt < m_slices.begin() + height;
        ++sliceIt) {
-    sliceIt->addSupport(skirt);
+    sliceIt->addSupport(closePaths(skirt));
   }
 }
 
-double Slicer::getShiftOffsetFromInfillOriginAndRotation(const PathsD &area,
-                                                         const float angle) {
-  auto bounds = GetBounds(area);
-  auto origin = bounds.MidPoint();
+int64_t Slicer::getLineDistance(uint lineCount, float density) const {
+  return MM2INT(INT2MM(m_lineWidth * lineCount) / density);
+}
+
+int64_t Slicer::getShiftOffsetFromInfillOriginAndRotation(const Paths64 &area,
+                                                          const double angle) {
+  Rect64 bounds = GetBounds(area);
+  Point64 origin = bounds.MidPoint();
+  // Nexus::Logger::debug("shift offset origin point: ({}, {})",
+  // INT2MM(origin.x),
+  //                      INT2MM(origin.y));
   if (origin.x != 0 || origin.y != 0) {
     return origin.x * std::cos(glm::radians(angle)) -
            origin.y * std::sin(glm::radians(angle));
@@ -309,105 +326,108 @@ double Slicer::getShiftOffsetFromInfillOriginAndRotation(const PathsD &area,
   return 0;
 }
 
-void Slicer::generateLineInfill(PathsD &infillResult, const double lineDistance,
-                                const float angle, float shift) {
+void Slicer::generateLineInfill(Paths64 &infillResult,
+                                const int64_t lineDistance, const double angle,
+                                int64_t shift) {
   if (lineDistance == 0 || m_currentArea.empty())
     return;
 
-  PathsD outline = m_currentArea;
-  auto bounds = GetBounds(outline);
-  double diagonal = std::sqrt(bounds.Width() * bounds.Width() +
-                              bounds.Height() * bounds.Height());
-  outline = InflatePaths(outline, diagonal, JoinType::Miter, EndType::Polygon);
+  Paths64 outline = m_currentArea;
+
   rotatePaths(outline, angle);
 
-  shift += getShiftOffsetFromInfillOriginAndRotation(m_currentArea, angle) +
-           lineDistance;
-  if (shift <= 0) {
-    shift = lineDistance - std::fmod(-shift, lineDistance);
+  const int64_t origShift = shift;
+  const int64_t rotShift =
+      getShiftOffsetFromInfillOriginAndRotation(m_currentArea, angle);
+  shift += rotShift + m_shift + extraShift;
+  if (shift < 0) {
+    shift = lineDistance - (-shift) % lineDistance;
   } else {
-    shift = std::fmod(shift, lineDistance);
+    shift = shift % lineDistance;
   }
 
   auto [minX, minY, maxX, maxY] = GetBounds(outline);
 
-  PathsD lines;
-  double y = minY - shift;
-  while (y < maxY - shift) {
-    lines.push_back({{minX - shift, y}, {maxX - shift, y}});
+  Paths64 lines;
+  int64_t y = minY - shift;
+  while (y < maxY + shift) {
+    lines.push_back({{minX, y}, {maxX, y}});
     y += lineDistance;
   }
   unRotatePaths(lines, angle);
 
-  ClipperD clipper;
+  Clipper64 clipper;
   clipper.AddOpenSubject(lines);
   clipper.AddClip(m_currentArea);
-  PathsD discard;
+  Paths64 discard;
   clipper.Execute(ClipType::Intersection, FillRule::NonZero, discard, lines);
   infillResult.append_range(lines);
 }
 
-void Slicer::generateGridInfill(PathsD &infillResult, const double lineDistance,
-                                const float angle, float shift) {
-  generateLineInfill(infillResult, lineDistance, angle + 0, 0);
-  generateLineInfill(infillResult, lineDistance, angle + 90, 0);
+void Slicer::generateGridInfill(Paths64 &infillResult,
+                                const int64_t lineDistance,
+                                const double angle) {
+  generateLineInfill(infillResult, lineDistance, 0, 0);
+  generateLineInfill(infillResult, lineDistance, 90, -1000);
 }
 
-void Slicer::generateCubicInfill(PathsD &infillResult,
-                                 const double lineDistance, const float angle) {
-  const double shift = (m_currentLayer * m_layerHeight) / std::sqrt(2);
+void Slicer::generateCubicInfill(Paths64 &infillResult,
+                                 const int64_t lineDistance,
+                                 const double angle) {
+  const int64_t shift =
+      (m_currentLayer * MM2INT(m_layerHeight)) / std::numbers::sqrt2;
   generateLineInfill(infillResult, lineDistance, angle + 0, shift);
   generateLineInfill(infillResult, lineDistance, angle + 120, shift);
   generateLineInfill(infillResult, lineDistance, angle + 240, shift);
 }
 
-void Slicer::generateTriangleInfill(PathsD &infillResult,
-                                    const double lineDistance,
-                                    const float angle, float shift) {
+void Slicer::generateTriangleInfill(Paths64 &infillResult,
+                                    const int64_t lineDistance,
+                                    const double angle) {
   generateLineInfill(infillResult, lineDistance, angle, 0);
   generateLineInfill(infillResult, lineDistance, angle + 60, 0);
   generateLineInfill(infillResult, lineDistance, angle + 120, 0);
 }
-void Slicer::generateTriHexagonInfill(PathsD &infillResult,
-                                      const double lineDistance,
-                                      const float angle, float shift) {
+void Slicer::generateTriHexagonInfill(Paths64 &infillResult,
+                                      const int64_t lineDistance,
+                                      const double angle) {
   generateLineInfill(infillResult, lineDistance, angle, 0);
   generateLineInfill(infillResult, lineDistance, angle + 60, 0);
   generateLineInfill(infillResult, lineDistance, angle + 120,
                      lineDistance / 2.0f);
 }
 
-void Slicer::generateTetrahedralInfill(PathsD &infillResult,
-                                       const double lineDistance) {
+void Slicer::generateTetrahedralInfill(Paths64 &infillResult,
+                                       const int64_t lineDistance) {
   generateHalfTetrahedralInfill(infillResult, lineDistance, 0, 0.0);
   generateHalfTetrahedralInfill(infillResult, lineDistance, 90, 0.0);
 }
-void Slicer::generateQuarterCubicInfill(PathsD &infillResult,
-                                        const double lineDistance) {
+void Slicer::generateQuarterCubicInfill(Paths64 &infillResult,
+                                        const int64_t lineDistance) {
   generateHalfTetrahedralInfill(infillResult, lineDistance, 0, 0.0);
   generateHalfTetrahedralInfill(infillResult, lineDistance, 90, 0.5);
 }
 
-void Slicer::generateHalfTetrahedralInfill(PathsD &infillResult,
-                                           const double lineDistance,
-                                           const float angle, float zShift) {
-  double period = lineDistance * 2.0f;
-  double shift = std::fmod(
-      ((m_currentLayer * m_layerHeight + zShift * period * 2) / std::sqrt(2)),
-      period);
+void Slicer::generateHalfTetrahedralInfill(Paths64 &infillResult,
+                                           const int64_t lineDistance,
+                                           const double angle, double zShift) {
+  int64_t period = lineDistance * 2;
+  int64_t shift = m_currentLayer * MM2INT(m_layerHeight) + zShift * period * 2;
+  shift /= std::numbers::sqrt2;
+  shift %= period;
   shift = std::min(shift, period - shift);
-  shift = std::min(shift, period / 2.0 - m_lineWidth / 2.0);
-  shift = std::max(shift, m_lineWidth / 2.0);
+  shift = std::min(shift, period / 2 - m_lineWidth / 2);
+  shift = std::max(shift, m_lineWidth / 2);
   generateLineInfill(infillResult, period, 45.0 + angle, shift);
   generateLineInfill(infillResult, period, 45.0 + angle, -shift);
 }
 
-void Slicer::generateConcentricInfill(PathsD &infillResult,
-                                      const double lineDistance) {
-  std::vector<PathsD> fills{closePathsD(InflatePaths(
+void Slicer::generateConcentricInfill(Paths64 &infillResult,
+                                      const int64_t lineDistance) {
+  std::vector<Paths64> fills{closePaths(InflatePaths(
       m_currentArea, -lineDistance, JoinType::Round, EndType::Polygon))};
   while (fills.back().size() > 0) {
-    fills.push_back(closePathsD(InflatePaths(
+    fills.push_back(closePaths(InflatePaths(
         fills.back(), -lineDistance, JoinType::Round, EndType::Polygon)));
   }
 

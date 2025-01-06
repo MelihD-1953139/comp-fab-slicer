@@ -1,9 +1,8 @@
 #include "gcodeWriter.h"
-#include "Nexus/Log.h"
-#include "clipper2/clipper.core.h"
 #include "state.h"
 #include "utils.h"
-#include <algorithm>
+
+#include <clipper2/clipper.core.h>
 #include <iomanip>
 #include <ios>
 
@@ -99,26 +98,36 @@ void GcodeWriter::WritePath(const Clipper2Lib::PathD &path, float speed) {
 
 void GcodeWriter::WriteSlice(const Slice &slice) {
 
-  m_file << ";TYPE:SUPPORT\n";
-  for (auto &paths : slice.getSupport())
-    WritePaths(paths, g_state.printerSettings.wallSpeed * 60.0f);
-
-  m_file << ";TYPE:WALL-INNER\n";
-  auto shells = slice.getShells();
-  for (auto it = shells.rbegin(); it != shells.rend(); ++it) {
-    WritePaths(*it, g_state.printerSettings.wallSpeed * 60.0f);
+  if (slice.hasSupport()) {
+    m_file << ";TYPE:SUPPORT\n";
+    for (auto &paths : slice.getSupport())
+      WritePaths(paths, g_state.printerSettings.wallSpeed * 60.0f);
   }
 
-  m_file << ";TYPE:WALL-OUTER\n";
-  WritePaths(slice.getPerimeter(), g_state.printerSettings.wallSpeed * 60.0f);
+  if (slice.hasWalls()) {
+    m_file << ";TYPE:WALL-INNER\n";
+    auto shells = slice.getShells();
+    for (auto it = shells.rbegin(); it != shells.rend(); ++it) {
+      WritePaths(*it, g_state.printerSettings.wallSpeed * 60.0f);
+    }
+  }
 
-  m_file << ";TYPE:SKIN\n";
-  for (auto &skin : slice.getFill())
-    WritePaths(skin, g_state.printerSettings.infillSpeed * 60.0f);
+  if (slice.hasPerimeter()) {
+    m_file << ";TYPE:WALL-OUTER\n";
+    WritePaths(slice.getPerimeter(), g_state.printerSettings.wallSpeed * 60.0f);
+  }
 
-  m_file << ";TYPE:FILL\n";
-  for (auto &infill : slice.getInfill())
-    WritePaths(infill, g_state.printerSettings.infillSpeed * 60.0f);
+  if (slice.hasFill()) {
+    m_file << ";TYPE:SKIN\n";
+    for (auto &skin : slice.getFill())
+      WritePaths(skin, g_state.printerSettings.infillSpeed * 60.0f);
+  }
+
+  if (slice.hasInfill()) {
+    m_file << ";TYPE:FILL\n";
+    for (auto &infill : slice.getInfill())
+      WritePaths(infill, g_state.printerSettings.infillSpeed * 60.0f);
+  }
 }
 
 void GcodeWriter::WriteFooter() {

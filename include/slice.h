@@ -63,6 +63,12 @@ public:
   void addSupport(const PathsD &support);
   void setSupportArea(const PathsD supportArea) { m_supportArea = supportArea; }
 
+  bool hasPerimeter() const { return m_paths.contains(OuterWall); }
+  bool hasWalls() const { return m_paths.contains(InnerWall); }
+  bool hasFill() const { return m_paths.contains(Skin); }
+  bool hasInfill() const { return m_paths.contains(Infill); }
+  bool hasSupport() const { return m_paths.contains(Support); }
+
   const PathsD &getPerimeter() const;
   const PathD getOuterMostPerimeter() const;
   const std::vector<PathsD> &getShells() const;

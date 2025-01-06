@@ -4,6 +4,7 @@
 #include "slice.h"
 
 #include <clipper2/clipper.core.h>
+#include <cstdint>
 #include <vector>
 
 inline void rotatePaths(Clipper2Lib::PathsD &paths, float angle) {
@@ -20,6 +21,21 @@ inline void rotatePaths(Clipper2Lib::PathsD &paths, float angle) {
     }
   }
 }
+inline void rotatePaths(Clipper2Lib::Paths64 &paths, float angle) {
+  using namespace Clipper2Lib;
+  angle = glm::radians(angle);
+  std::array<double, 4> rotation{std::cos(angle), -std::sin(angle),
+                                 std::sin(angle), std::cos(angle)};
+
+  for (Path64 &path : paths) {
+    for (Point64 &point : path) {
+      const double x = static_cast<double>(point.x);
+      const double y = static_cast<double>(point.y);
+      point = {std::llrint(x * rotation[0] + y * rotation[1]),
+               std::llrint(x * rotation[2] + y * rotation[3])};
+    }
+  }
+}
 inline void unRotatePaths(Clipper2Lib::PathsD &paths, float angle) {
   angle = glm::radians(angle);
   std::array<double, 4> rotation{std::cos(angle), -std::sin(angle),
@@ -31,6 +47,21 @@ inline void unRotatePaths(Clipper2Lib::PathsD &paths, float angle) {
       const auto y = point.y;
       point = {x * rotation[0] + y * rotation[2],
                x * rotation[1] + y * rotation[3]};
+    }
+  }
+}
+inline void unRotatePaths(Clipper2Lib::Paths64 &paths, float angle) {
+  using namespace Clipper2Lib;
+  angle = glm::radians(angle);
+  std::array<double, 4> rotation{std::cos(angle), -std::sin(angle),
+                                 std::sin(angle), std::cos(angle)};
+
+  for (Path64 &path : paths) {
+    for (Point64 &point : path) {
+      const double x = static_cast<double>(point.x);
+      const double y = static_cast<double>(point.y);
+      point = {std::llrint(x * rotation[0] + y * rotation[2]),
+               std::llrint(x * rotation[1] + y * rotation[3])};
     }
   }
 }
@@ -52,7 +83,6 @@ enum InfillType {
   Tetrahedral,
   QuarterCubic,
   ConcentricInfill,
-  HalfTetrahedral,
   InfillCount,
 };
 
@@ -66,7 +96,7 @@ enum SupportType {
 };
 
 enum AdhesionTypes {
-  None,
+  NoAdhesion,
   Brim,
   Skirt,
   Raft,
@@ -81,7 +111,8 @@ enum BrimLocation {
 };
 
 class Slicer {
-public:
+  using Paths64 = Clipper2Lib::Paths64;
+
 public:
   Slicer() = default;
   Slicer(const char *modelPath);
@@ -107,48 +138,43 @@ public:
 
   const char *fillTypes[FillType::FillCount]{"None", "Concentric", "Lines"};
   const char *infillTypes[InfillType::InfillCount]{
-      "None",        "Lines",
-      "Grid",        "Cubic",
-      "Triangle",    "Tri-Hexagon",
-      "Tetrahedral", "Quarter Cubic",
-      "Concentric",  "Half Tetrahedral",
+      "None",        "Lines",       "Grid",          "Cubic",      "Triangle",
+      "Tri-Hexagon", "Tetrahedral", "Quarter Cubic", "Concentric",
   };
   const char *supportTypes[SupportType::SupportCount]{
       "None", "Lines", "Grid", "Triangles", "Concentric"};
 
+  int64_t extraShift;
+
 private:
-  double
-  getShiftOffsetFromInfillOriginAndRotation(const Clipper2Lib::PathsD &area,
-                                            const float angle);
+  int64_t getLineDistance(uint lineCount, float density) const;
 
-  void generateFill(Clipper2Lib::PathsD &fillResult, FillType fillType,
-                    const float angle);
+  int64_t getShiftOffsetFromInfillOriginAndRotation(const Paths64 &area,
+                                                    const double angle);
 
-  void generateLineInfill(Clipper2Lib::PathsD &infillResult,
-                          const double lineDistance, const float angle,
-                          float shift);
-  void generateGridInfill(Clipper2Lib::PathsD &infillResult,
-                          const double lineDistance, const float angle,
-                          float shift);
+  void generateFill(Paths64 &fillResult, FillType fillType, const double angle);
 
-  void generateCubicInfill(Clipper2Lib::PathsD &infillResult,
-                           const double lineDistance, const float angle);
+  void generateLineInfill(Paths64 &infillResult, const int64_t lineDistance,
+                          const double angle, int64_t shift);
+  void generateGridInfill(Paths64 &infillResult, const int64_t lineDistance,
+                          const double angle);
 
-  void generateTriangleInfill(Clipper2Lib::PathsD &infillResult,
-                              const double lineDistance, const float angle,
-                              float shift);
-  void generateTriHexagonInfill(Clipper2Lib::PathsD &infillResult,
-                                const double lineDistance, const float angle,
-                                float shift);
-  void generateTetrahedralInfill(Clipper2Lib::PathsD &infillResult,
-                                 const double lineDistance);
-  void generateQuarterCubicInfill(Clipper2Lib::PathsD &infillResult,
-                                  const double lineDistance);
-  void generateHalfTetrahedralInfill(Clipper2Lib::PathsD &infillResult,
-                                     const double lineDistance,
-                                     const float angle, float zShift);
-  void generateConcentricInfill(Clipper2Lib::PathsD &infillResult,
-                                const double lineDistance);
+  void generateCubicInfill(Paths64 &infillResult, const int64_t lineDistance,
+                           const double angle);
+
+  void generateTriangleInfill(Paths64 &infillResult, const int64_t lineDistance,
+                              const double angle);
+  void generateTriHexagonInfill(Paths64 &infillResult,
+                                const int64_t lineDistance, const double angle);
+  void generateTetrahedralInfill(Paths64 &infillResult,
+                                 const int64_t lineDistance);
+  void generateQuarterCubicInfill(Paths64 &infillResult,
+                                  const int64_t lineDistance);
+  void generateHalfTetrahedralInfill(Paths64 &infillResult,
+                                     const int64_t lineDistance,
+                                     const double angle, const double zShift);
+  void generateConcentricInfill(Paths64 &infillResult,
+                                const int64_t lineDistance);
 
 private:
   std::unique_ptr<Model> m_model;
@@ -156,9 +182,10 @@ private:
 
   size_t m_layerCount = 0;
   float m_layerHeight;
-  float m_lineWidth;
+  int64_t m_lineWidth;
+  int64_t m_shift;
 
-  Clipper2Lib::PathsD m_currentArea;
+  Paths64 m_currentArea;
   size_t m_currentLayer;
   double m_infillLineDistance;
 };
