@@ -316,9 +316,6 @@ int64_t Slicer::getShiftOffsetFromInfillOriginAndRotation(const Paths64 &area,
                                                           const double angle) {
   Rect64 bounds = GetBounds(area);
   Point64 origin = bounds.MidPoint();
-  // Nexus::Logger::debug("shift offset origin point: ({}, {})",
-  // INT2MM(origin.x),
-  //                      INT2MM(origin.y));
   if (origin.x != 0 || origin.y != 0) {
     return origin.x * std::cos(glm::radians(angle)) -
            origin.y * std::sin(glm::radians(angle));

@@ -150,14 +150,13 @@ int main(int argc, char *argv[]) {
       }
 
       if (ImGui::CollapsingHeader("Model settings")) {
-        g_state.sliceSettings.maxSliceIndex = std::ceil<int>(
-            model.getHeight() / g_state.sliceSettings.layerHeight);
-
         ImGui::InputText("Model file", g_state.fileSettings.inputFile,
                          IM_ARRAYSIZE(g_state.fileSettings.inputFile));
         if (ImGui::Button("Load")) {
           slicer.loadModel(g_state.fileSettings.inputFile);
+          model = slicer.getModel();
           model.setPosition(printer.getCenter() * ZEROY);
+          model.getHeight();
           g_state.sliceSettings.maxSliceIndex =
               model.getLayerCount(g_state.sliceSettings.layerHeight);
           g_state.sliceSettings.sliceIndex =
@@ -175,9 +174,9 @@ int main(int argc, char *argv[]) {
         ImGui::Checkbox("Drop model down", &g_state.objectSettings.dropDown);
       }
 
-      if (!ImGui::CollapsingHeader("Slice settings")) {
+      if (ImGui::CollapsingHeader("Slice settings")) {
         if (ImGui::SliderInt("Slice Index", &g_state.sliceSettings.sliceIndex,
-                             1, slicer.getLayerCount())) {
+                             1, g_state.sliceSettings.maxSliceIndex)) {
           printer.setSliceHeight((g_state.sliceSettings.sliceIndex - 1) *
                                  g_state.sliceSettings.layerHeight);
         }
